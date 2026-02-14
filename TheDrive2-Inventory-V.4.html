@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="ar" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Drive 2 | Inventory System V4</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-dark: #3730a3;
+      --primary-light: #6366f1;
+      --secondary: #059669;
+      --secondary-dark: #047857;
+      --bg: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-elevated: #f1f5f9;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --danger: #dc2626;
+      --warning: #d97706;
+      --glass: rgba(255, 255, 255, 0.9);
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      --gradient: linear-gradient(135deg, #6366f1, #818cf8);
+    }
+    *{box-sizing:border-box;font-family:'Inter',sans-serif;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);padding-bottom:90px;overflow-x:hidden;font-size:14px}
+    ::-webkit-scrollbar{width:6px;height:6px}
+    ::-webkit-scrollbar-track{background:var(--bg)}
+    ::-webkit-scrollbar-thumb{background:var(--bg-elevated);border-radius:3px}
+
+    /* Loader */
+    #loader-overlay{display:flex;position:fixed;inset:0;background:var(--bg);z-index:9999;flex-direction:column;align-items:center;justify-content:center;transition:opacity .5s}
+    .spinner{width:50px;height:50px;border:3px solid var(--border);border-top:3px solid var(--primary);border-right:3px solid var(--secondary);border-radius:50%;animation:spin .8s cubic-bezier(.4,0,.2,1) infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    #loader-message{margin-top:20px;font-size:1rem;font-weight:600;color:var(--primary-light);letter-spacing:1px;animation:pulse 1.5s infinite}
+    @keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+
+    /* Login */
+    #login-screen{position:fixed;inset:0;background:var(--bg);z-index:5000;display:flex;align-items:center;justify-content:center}
+    .login-container{display:flex;width:100%;height:100%;margin:0;gap:0;align-items:stretch;position:relative;z-index:1}
+    .login-image-side{flex:1.2;background:url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQx4D3vGLkJVJbZ6NKwi86NhDZXgdkj_1AjfQ&s') center/cover;position:relative;display:flex;align-items:flex-end;padding:60px}
+    .login-image-side::before{content:'';position:absolute;inset:0;background:linear-gradient(to top, rgba(15,23,42,0.8), transparent)}
+    .login-about{position:relative;z-index:2;color:white;text-align:left}
+    .login-about h1{font-size:3rem;font-weight:900;margin-bottom:15px;color:white}
+    .login-about p{font-size:1.1rem;line-height:1.6;margin-bottom:12px;color:rgba(255,255,255,0.9)}
+    .login-box-side{flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-card);padding:40px}
+    .login-box{width:100%;max-width:400px;text-align:center}
+    .login-title{color:var(--primary);font-weight:800;margin-bottom:8px;font-size:2rem}
+    .login-subtitle{color:var(--text-muted);font-size:.95rem;margin-bottom:30px}
+    .login-input{width:100%;padding:12px 16px;margin:8px 0;border:1px solid var(--border);border-radius:12px;font-size:14px;outline:none;transition:.3s;background:var(--bg-elevated);color:var(--text);height:50px}
+    .login-input:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(79,70,229,.1)}
+    .btn-login{width:100%;padding:14px;background:var(--gradient);color:white;border:none;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer;margin-top:20px;transition:.3s;box-shadow:0 4px 15px rgba(79,70,229,0.3)}
+    .btn-login:hover{transform:translateY(-2px);box-shadow:0 6px 25px rgba(79,70,229,0.4)}
+    @media(max-width:900px){.login-image-side{display:none}.login-box-side{background:var(--bg)}}
+
+    /* Header */
+    header{background:var(--glass);padding:0 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:1000;backdrop-filter:blur(15px);height:38px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .brand-name{font-weight:800;color:var(--text);font-size:1rem;letter-spacing:.5px}
+    .brand-sub{font-size:.7rem;color:var(--text-muted);font-weight:600}
+    .header-right{display:flex;align-items:center;gap:15px}
+    .header-clock{font-size:.75rem;color:var(--text-muted);font-family:'Courier New',monospace;background:var(--bg-elevated);padding:4px 10px;border-radius:8px}
+    .header-user{font-size:.8rem;font-weight:700;color:var(--primary-light)}
+    .admin-badge{background:var(--danger);color:white;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;display:none}
+
+    /* Navigation */
+    .tabs-container{background:var(--bg-card);padding:4px 20px;border-bottom:1px solid var(--border);position:sticky;top:38px;z-index:900}
+    .tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+    .tabs::-webkit-scrollbar{display:none}
+    .tab-btn{padding:4px 10px;border:1px solid transparent;border-radius:8px;cursor:pointer;font-weight:600;background:transparent;color:var(--text-muted);white-space:nowrap;font-size:12px;transition:.3s;position:relative}
+    .tab-btn:hover{background:var(--bg-elevated);color:var(--text)}
+    .tab-btn.active{background:var(--primary);color:white;border-color:var(--primary);box-shadow:0 2px 12px rgba(99,102,241,.4)}
+    .tab-btn.admin-tab{color:var(--danger);border:1px solid rgba(239,68,68,.3);display:none}
+    .tab-btn.admin-tab.active{background:var(--danger);color:white;border-color:var(--danger)}
+    .tab-btn .tab-badge{position:absolute;top:-4px;right:-4px;background:var(--secondary);color:white;font-size:9px;padding:1px 5px;border-radius:10px;font-weight:700;min-width:18px;text-align:center}
+    .tab-btn.oos-tab{color:var(--warning);border:1px solid rgba(245,158,11,.3)}
+    .tab-btn.oos-tab.active{background:var(--warning);color:#000;border-color:var(--warning)}
+
+    /* Stats Bar */
+    .stats-bar{display:flex;gap:8px;padding:4px 20px;background:var(--bg-card);border-bottom:1px solid var(--border);overflow-x:auto}
+    .stat-item{display:flex;align-items:center;gap:6px;padding:3px 8px;background:var(--bg-elevated);border-radius:8px;white-space:nowrap;font-size:11px;font-weight:600}
+    .stat-item i{font-size:14px}
+    .stat-item.total-items i{color:var(--primary)}
+    .stat-item.counted i{color:var(--secondary)}
+    .stat-item.oos-count i{color:var(--warning)}
+    .stat-item.total-cost i{color:#db2777}
+    .stat-value{color:var(--text);font-weight:700}
+
+    /* Search */
+    .search-bar{padding:6px 20px;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center}
+    .search-input{flex:1;padding:7px 14px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;outline:none;transition:.3s}
+    .inventory-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:10px;padding:12px 20px}
+    .product-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;transition:.3s;box-shadow:0 2px 4px rgba(0,0,0,0.02)}
+    .product-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+    .product-name{font-weight:600;font-size:14px;color:var(--text);flex-grow:1;text-align:left}
+    .product-code{font-family:'Courier New',monospace;font-size:11px;color:var(--primary-light);font-weight:700;background:var(--bg-elevated);padding:3px 6px;border-radius:6px}
+    .product-type{font-size:10px;color:var(--text-muted);background:var(--bg-elevated);padding:2px 6px;border-radius:6px;font-weight:500;margin-right:auto}
+    .product-cost{font-size:12px;font-weight:700;color:#db2777}
+    .product-qty-section{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+    .qty-controls{display:flex;align-items:center;gap:6px;margin-top:4px}
+    .qty-input{width:60px;height:32px;text-align:center;border:1px solid var(--border);border-radius:8px;background:var(--bg-elevated);color:var(--text);font-weight:700;font-size:13px}
+    .btn-qty{width:32px;height:32px;border-radius:8px;border:none;background:var(--bg-elevated);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.2s}
+    .search-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+    .search-input::placeholder{color:var(--text-muted)}
+    .filter-select{padding:10px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:12px;outline:none;min-width:140px}
+
+    /* Controls */
+    #controls-area{background:var(--bg-card);padding:8px 20px;display:none;border-bottom:1px solid var(--border);position:sticky;top:120px;z-index:800}
+
+    /* Table */
+    .table-wrapper{margin:12px;background:var(--bg-card);border-radius:16px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow)}
+    .table-scroll{overflow-x:auto;max-height:70vh}
+    table{width:100%;border-collapse:separate;min-width:900px;border-spacing:0}
+    th{background:var(--bg-elevated);color:var(--text-muted);font-size:10px;text-transform:uppercase;padding:12px 8px;text-align:center;font-weight:700;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;letter-spacing:.5px}
+    td{padding:8px;text-align:center;font-size:12px;border-bottom:1px solid rgba(51,65,85,.5);vertical-align:middle;height:42px;color:var(--text)}
+    tr:hover td{background:rgba(99,102,241,.05)}
+
+    .sticky-col{position:sticky;background:var(--bg-card);z-index:30;border-right:1px solid var(--border)}
+    .sticky-col-ref{left:0;width:60px}
+    .sticky-col-code{left:60px;width:70px;font-family:'Courier New',monospace;font-weight:700;color:var(--primary-light);font-size:11px}
+    .sticky-col-qty{left:130px;width:70px;background:rgba(99,102,241,.1)!important}
+    th.sticky-col{background:var(--bg-elevated);z-index:60}
+
+    .qty-input{width:100%;padding:6px 0;border:1px solid transparent;background:transparent;border-radius:8px;text-align:center;font-size:14px;font-weight:700;color:var(--text);transition:.2s;height:32px;min-width:50px}
+    .qty-input:focus{background:var(--bg-elevated);box-shadow:0 0 0 2px rgba(99,102,241,.3);border-color:var(--primary)}
+    .qty-input.has-value{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3)}
+
+    .oos-toggle{width:18px;height:18px;cursor:pointer;accent-color:var(--warning)}
+    tr.oos-row td{opacity:.5;text-decoration:line-through}
+    tr.oos-row .sticky-col-qty{text-decoration:none;opacity:1}
+    tr.oos-row .oos-cell{text-decoration:none;opacity:1}
+
+    .admin-qty-col{width:45px;padding:2px}
+    .qty-input.mini{width:38px;border:1px solid var(--border);background:var(--bg-elevated);font-size:12px}
+    .qty-input.total{background:rgba(239,68,68,.1);color:var(--danger);border:none;font-weight:800;width:45px}
+
+    /* Footer */
+    .footer-actions{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--glass);padding:8px 12px;border-radius:16px;border:1px solid var(--border);display:flex;gap:8px;align-items:center;box-shadow:var(--shadow);z-index:1000;backdrop-filter:blur(15px);width:calc(100% - 40px);max-width:600px;height:auto}
+    .btn-action{border:none;border-radius:12px;padding:0 16px;font-weight:700;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 12px;border:1px solid var(--border);border-radius:10px;cursor:pointer;font-weight:700;font-size:12px;transition:.3s;display:flex;align-items:center;justify-content:center;gap:6px}
+    .btn-action:hover{transform:translateY(-1px)}
+    .btn-upload{flex:2;background:var(--gradient);color:white;box-shadow:0 4px 15px rgba(99,102,241,.3)}
+    .btn-tg{width:46px;background:#0088cc;color:white;border-radius:12px;font-size:18px}
+    .btn-report{background:var(--bg-elevated);color:var(--text);border:1px solid var(--border);flex:1;display:none}
+    .btn-logout{width:46px;background:var(--danger);color:white;border-radius:12px;font-size:18px}
+    .btn-clear{width:46px;background:var(--warning);color:#000;border-radius:12px;font-size:18px}
+    @media(max-width:768px){.footer-actions{padding:8px 12px;height:64px}.btn-action{font-size:12px;height:42px}.btn-tg,.btn-logout,.btn-clear{width:42px;font-size:16px}}
+
+    /* Modals */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;align-items:center;justify-content:center;padding:15px;backdrop-filter:blur(4px)}
+    .modal-box{background:var(--bg-card);width:100%;max-width:500px;border-radius:20px;padding:24px;border:1px solid var(--border);box-shadow:0 20px 60px rgba(0,0,0,.5);animation:slideUp .3s ease;display:flex;flex-direction:column;max-height:85vh}
+    @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+
+    .custom-dialog{background:var(--bg-card);border-radius:20px;padding:30px;max-width:400px;width:90%;border:1px solid var(--border);box-shadow:0 20px 60px rgba(0,0,0,.5);animation:slideUp .3s ease;text-align:center}
+    .dialog-icon{font-size:3rem;margin-bottom:20px}
+    .dialog-icon.success{color:var(--secondary)}
+    .dialog-icon.error{color:var(--danger)}
+    .dialog-icon.warning{color:var(--warning)}
+    .dialog-icon.info{color:var(--primary-light)}
+    .dialog-title{font-size:1.3rem;font-weight:700;margin-bottom:10px;color:var(--text)}
+    .dialog-message{font-size:.95rem;color:var(--text-muted);margin-bottom:25px;line-height:1.6}
+    .dialog-buttons{display:flex;gap:10px;justify-content:center}
+    .dialog-btn{padding:12px 30px;border:none;border-radius:12px;font-weight:600;cursor:pointer;transition:.3s;font-size:14px}
+    .dialog-btn.primary{background:var(--gradient);color:white}
+    .dialog-btn.primary:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(99,102,241,.3)}
+    .dialog-btn.secondary{background:var(--bg-elevated);color:var(--text-muted)}
+    .dialog-btn.danger{background:var(--danger);color:white}
+
+    /* Report */
+    .report-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:var(--bg-elevated);padding:15px;border-radius:12px;margin-bottom:15px}
+    .col-full{grid-column:1/-1}
+    .control-group label{font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:4px;display:block}
+    .control-input{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:10px;transition:.2s;font-size:13px;height:40px;background:var(--bg-card);color:var(--text)}
+    .control-input:focus{border-color:var(--primary);outline:none}
+
+    /* Save Indicator */
+    .save-indicator{position:fixed;top:65px;right:20px;background:var(--secondary);color:white;padding:4px 12px;border-radius:8px;font-size:11px;font-weight:600;opacity:0;transition:opacity .3s;z-index:1001;pointer-events:none}
+    .save-indicator.show{opacity:1}
+
+    /* Print */
+    @media print{#login-screen,header,.tabs-container,.stats-bar,.search-bar,.footer-actions,.modal-overlay{display:none!important}body{background:#fff;color:#000;padding:0}.table-wrapper{margin:0;border:none;box-shadow:none}table{min-width:auto}th{background:#eee;color:#333}td{color:#333;border-bottom:1px solid #ddd}}
+  </style>
+</head>
+<body>
+
+  <div id="loader-overlay">
+    <div class="spinner"></div>
+    <div id="loader-message">Connecting to server</div>
+  </div>
+
+  <div class="save-indicator" id="save-indicator">✓ Saved</div>
+
+  <div id="login-screen">
+    <div class="login-container">
+      <div class="login-image-side">
+        <div class="login-about">
+          <h1>EZEM Inventory System</h1>
+          <p><strong>About the System:</strong></p>
+          <p>A comprehensive inventory management system providing precise tracking for daily, weekly, and monthly items. Features a modern, user-friendly interface with professional reporting and automated export capabilities.</p>
+          <p>✓ Real-time Google Sheets sync | ✓ PDF & Excel reports | ✓ Telegram notifications | ✓ User management</p>
+          <p style="margin-top:20px;font-size:0.85rem;opacity:0.8">© 2026 EZEM. All Rights Reserved.</p>
+        </div>
+      </div>
+      <div class="login-box-side">
+        <div class="login-box">
+          <img src="https://lh3.googleusercontent.com/d/1gwXYV5GVOzHgkI3QpFY4Up5mavYFBVcl" alt="EZEM Logo" style="width:70px;margin-bottom:12px;border-radius:16px;box-shadow:var(--shadow)">
+          <div class="login-title">LOGIN SYSTEM</div>
+          <div class="login-subtitle">THE DRIVE 2 | INVENTORY V4</div>
+          <select id="user-select" class="login-input" autocomplete="off"><option value="" disabled selected>Select Identity</option></select>
+          <input type="password" id="user-pass" class="login-input" placeholder="Enter Password" autocomplete="new-password">
+          <button class="btn-login" onclick="attemptLogin()">ACCESS DASHBOARD</button>
+          <p id="err-msg" style="color:var(--danger);display:none;margin-top:12px;font-weight:600;font-size:13px">Authentication Failed</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <header>
+    <div class="brand">
+      <img src="https://lh3.googleusercontent.com/d/1gwXYV5GVOzHgkI3QpFY4Up5mavYFBVcl" alt="Logo" style="width:36px;height:auto;border-radius:10px">
+      <div style="display:flex;flex-direction:column;line-height:1.2">
+        <span class="brand-name">THE DRIVE 2</span>
+        <span class="brand-sub">INVENTORY SYSTEM V4</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="header-clock" id="header-clock">--:--:--</span>
+      <div style="text-align:right;display:flex;align-items:center;gap:8px">
+        <span class="header-user" id="display-user">Guest</span>
+        <span id="admin-badge" class="admin-badge">ADMIN</span>
+        <button id="btn-user-mgmt" class="btn-action" style="width:32px;height:32px;padding:0;display:none;background:var(--bg-elevated)" onclick="openUserMgmt()"><i class="fas fa-users-cog"></i></button>
+      </div>
+    </div>
+  </header>
+
+  <div class="tabs-container">
+    <nav class="tabs">
+      <button class="tab-btn active" onclick="switchTab('Daily')">Daily <span class="tab-badge" id="badge-Daily" style="display:none">0</span></button>
+      <button class="tab-btn" onclick="switchTab('CK')">CK <span class="tab-badge" id="badge-CK" style="display:none">0</span></button>
+      <button class="tab-btn" onclick="switchTab('Weekly')">Weekly <span class="tab-badge" id="badge-Weekly" style="display:none">0</span></button>
+      <button class="tab-btn" onclick="switchTab('Monthly')">Monthly <span class="tab-badge" id="badge-Monthly" style="display:none">0</span></button>
+      <button class="tab-btn oos-tab" id="btn-oos" onclick="switchTab('OOS')"><i class="fas fa-ban"></i> OOS <span class="tab-badge" id="badge-OOS" style="display:none">0</span></button>
+      <button class="tab-btn admin-tab" id="btn-master" onclick="switchTab('Monthly Inventory')"><i class="fas fa-database"></i> M. Inventory</button>
+    </nav>
+  </div>
+
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat-item total-items"><i class="fas fa-boxes-stacked"></i> Items: <span class="stat-value" id="stat-total">0</span></div>
+    <div class="stat-item counted"><i class="fas fa-check-circle"></i> Counted: <span class="stat-value" id="stat-counted">0</span></div>
+    <div class="stat-item oos-count"><i class="fas fa-ban"></i> OOS: <span class="stat-value" id="stat-oos">0</span></div>
+    <div class="stat-item total-cost"><i class="fas fa-coins"></i> Cost: <span class="stat-value" id="stat-cost">EGP 0</span></div>
+  </div>
+
+  <div class="search-bar" id="search-bar">
+    <i class="fas fa-search" style="color:var(--text-muted)"></i>
+    <input type="text" class="search-input" id="search-input" placeholder="Search by code, name, or arabic..." oninput="filterTable()">
+    <select class="filter-select" id="type-filter" onchange="filterTable()"><option value="All">All Types</option></select>
+  </div>
+
+  <div id="controls-area">
+    <select id="filter-cycle" class="filter-select" onchange="renderTable()"><option value="All">All Cycles</option></select>
+  </div>
+
+  <div class="table-wrapper">
+    <div class="table-scroll">
+      <table id="main-table">
+        <thead id="table-head"></thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer-actions">
+    <button class="btn-action btn-tg" onclick="openTgModal()"><i class="fab fa-telegram-plane"></i></button>
+    <button class="btn-action btn-report" id="btn-admin-report" onclick="openReportView()"><i class="fas fa-chart-pie"></i> Reports</button>
+    <button class="btn-action" id="btn-admin-users" style="display:none;background:var(--bg-elevated);color:var(--text);border:1px solid var(--border);flex:1" onclick="openUserMgmt()"><i class="fas fa-users"></i> Users</button>
+    <button class="btn-action btn-upload" onclick="confirmUpload()"><span>UPLOAD DATA</span> <i class="fas fa-cloud-upload-alt"></i></button>
+    <button class="btn-action btn-clear" onclick="clearAllInputs()" title="Clear"><i class="fas fa-eraser"></i></button>
+    <button class="btn-action btn-logout" onclick="logout()" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+
+  <!-- Report Modal -->
+  <div id="report-view" class="modal-overlay">
+    <div class="modal-box" style="max-width:950px;height:85vh;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+        <h3 style="margin:0;font-size:1.1rem"><i class="fas fa-chart-bar" style="color:var(--primary-light)"></i> Reports</h3>
+        <button onclick="closeReportView()" style="border:none;background:var(--bg-elevated);color:var(--text);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px">&times;</button>
+      </div>
+      <div class="report-controls">
+        <div class="control-group"><label>Start</label><input type="date" id="rpt-start" class="control-input"></div>
+        <div class="control-group"><label>End</label><input type="date" id="rpt-end" class="control-input"></div>
+        <div class="control-group col-full"><label>Section</label>
+          <select id="rpt-section" class="control-input">
+            <option value="All">All Sections</option><option value="Daily">Daily</option><option value="CK">CK</option>
+            <option value="Weekly">Weekly</option><option value="Monthly">Monthly</option>
+            <option value="Monthly Inventory">Monthly Inventory (Admin)</option>
+          </select>
+        </div>
+        <button class="btn-login col-full" style="margin-top:0" onclick="fetchReport()">Generate Report</button>
+        <div class="col-full" style="display:flex;gap:10px;margin-top:5px">
+          <button class="btn-action" style="background:#217346;color:white;flex:1" onclick="exportReportToExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+          <button class="btn-action" style="background:var(--danger);color:white;flex:1" onclick="exportReportToPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+          <button class="btn-action" style="background:#0088cc;color:white;flex:1" onclick="sendReportToTelegram()"><i class="fab fa-telegram-plane"></i> Telegram</button>
+        </div>
+      </div>
+      <div style="overflow:auto;flex:1;border:1px solid var(--border);border-radius:10px">
+        <table id="report-table">
+          <thead style="background:var(--bg-elevated)"><tr>
+            <th>Refranc</th><th>Code</th><th>Item Name</th><th>WH Unit</th><th>Unit Weight</th><th>Type</th><th>Cost</th><th>QTY</th><th>Total Cost</th><th>User</th><th>Date</th>
+          </tr></thead>
+          <tbody id="report-body"></tbody>
+          <tfoot id="report-foot"></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Management Modal -->
+  <div id="user-mgmt-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width:600px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+        <h3 style="margin:0;font-size:1.1rem"><i class="fas fa-users-cog"></i> User Management</h3>
+        <button onclick="document.getElementById('user-mgmt-modal').style.display='none'" style="border:none;background:var(--bg-elevated);color:var(--text);width:32px;height:32px;border-radius:8px;cursor:pointer">&times;</button>
+      </div>
+      <div style="background:var(--bg-elevated);padding:15px;border-radius:12px;margin-bottom:15px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <input id="new-user-name" class="control-input" placeholder="User Name">
+          <input id="new-user-pass" class="control-input" placeholder="Password">
+          <select id="new-user-role" class="control-input">
+            <option value="User">User</option>
+            <option value="Admin">Admin</option>
+          </select>
+          <select id="new-user-dept" class="control-input">
+            <option value="All">Role Access: Full Admin</option>
+            <option value="Daily">Role Access: Daily Only</option>
+            <option value="CK">Role Access: CK Only</option>
+            <option value="Weekly">Role Access: Weekly Only</option>
+            <option value="Monthly">Role Access: Monthly Only</option>
+          </select>
+        </div>
+        <button class="btn-login" style="margin-top:10px;background:var(--secondary)" onclick="saveUser()"><i class="fas fa-user-plus"></i> Save User to Database</button>
+      </div>
+      <div style="overflow:auto;max-height:300px;border:1px solid var(--border);border-radius:12px">
+        <table style="width:100%;min-width:auto">
+          <thead style="background:var(--bg-elevated)"><tr><th>Name</th><th>Role</th><th>Access</th><th>Action</th></tr></thead>
+          <tbody id="user-list-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TG Modal -->
+  <div id="tg-modal" class="modal-overlay">
+    <div class="modal-box">
+      <h3 style="margin-top:0;font-size:1.1rem"><i class="fab fa-telegram-plane" style="color:#0088cc"></i> PDF & Telegram</h3>
+      <button class="btn-action" style="background:var(--danger);color:white;width:100%;margin-bottom:10px" onclick="generatePDF()"><i class="fas fa-file-pdf"></i> Download PDF</button>
+      <button class="btn-action" style="background:#0088cc;color:white;width:100%" onclick="sendToTelegram()"><i class="fab fa-telegram-plane"></i> Send to Telegram</button>
+      <button class="btn-action" style="background:var(--bg-elevated);color:var(--text);width:100%;margin-top:10px" onclick="document.getElementById('tg-modal').style.display='none'">Close</button>
+      <div style="margin-top:20px;font-size:11px;color:var(--text-muted)">
+        <p style="margin-bottom:8px;font-weight:600">Telegram Settings</p>
+        <input id="tg-token" class="login-input" style="height:34px;margin:4px 0;font-size:11px" placeholder="Bot Token">
+        <input id="tg-chat-id" class="login-input" style="height:34px;margin:4px 0;font-size:11px" placeholder="Chat ID">
+        <button onclick="saveTgSettings()" class="btn-login" style="margin-top:8px;height:36px;font-size:12px">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Dialog -->
+  <div id="custom-dialog-overlay" class="modal-overlay">
+    <div id="custom-dialog-content" class="custom-dialog"></div>
+  </div>
+
+  <script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyZD-EscKVlUGY7n8L6T9jwKC8sky_8bCGkPYno59qolzxzrVH44TwdAEgfG2q4603g/exec';
+    let currentUser = "", currentTab = "Daily";
+    let masterData = { users: [], db: {} };
+    let combinedInventory = [], currentReportData = [];
+
+    // Clock
+    setInterval(() => {
+      const now = new Date();
+      const el = document.getElementById('header-clock');
+      if(el) el.textContent = now.toLocaleTimeString('en-GB', {hour12:false});
+    }, 1000);
+
+    // Dialog functions
+    function showAlert(message, type='info', title='') {
+      return new Promise(resolve => {
+        const overlay = document.getElementById('custom-dialog-overlay');
+        const content = document.getElementById('custom-dialog-content');
+        const icons = {success:'fa-check-circle',error:'fa-times-circle',warning:'fa-exclamation-triangle',info:'fa-info-circle'};
+        const titles = {success:title||'Success',error:title||'Error',warning:title||'Warning',info:title||'Information'};
+        content.innerHTML = `<div class="dialog-icon ${type}"><i class="fas ${icons[type]}"></i></div><div class="dialog-title">${titles[type]}</div><div class="dialog-message">${message}</div><div class="dialog-buttons"><button class="dialog-btn primary" onclick="closeCustomDialog()">OK</button></div>`;
+        overlay.style.display = 'flex';
+        window.closeCustomDialog = () => { overlay.style.display='none'; resolve(true); };
+      });
+    }
+    function showConfirm(message, title='Confirm') {
+      return new Promise(resolve => {
+        const overlay = document.getElementById('custom-dialog-overlay');
+        const content = document.getElementById('custom-dialog-content');
+        content.innerHTML = `<div class="dialog-icon warning"><i class="fas fa-question-circle"></i></div><div class="dialog-title">${title}</div><div class="dialog-message">${message}</div><div class="dialog-buttons"><button class="dialog-btn secondary" onclick="resolveConfirm(false)">Cancel</button><button class="dialog-btn primary" onclick="resolveConfirm(true)">Confirm</button></div>`;
+        overlay.style.display = 'flex';
+        window.resolveConfirm = r => { overlay.style.display='none'; resolve(r); };
+      });
+    }
+
+    // Save indicator
+    function flashSave() {
+      const el = document.getElementById('save-indicator');
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 1200);
+    }
+
+    // Init
+    async function initSystem() {
+      try {
+        document.getElementById('loader-message').innerText = 'Connecting to server';
+        const res = await fetch(SCRIPT_URL);
+        masterData = await res.json();
+        populateLogin(masterData.users);
+        const allSheets = ['Daily','CK','Weekly','Monthly'];
+        let map = new Map();
+        allSheets.forEach(s => {
+          if(masterData.db[s]) masterData.db[s].forEach(item => {
+            if(!map.has(item.Code)) map.set(item.Code, {...item});
+          });
+        });
+        combinedInventory = Array.from(map.values());
+        document.getElementById('tg-token').value = localStorage.getItem('tg_bot_token') || "8475097712:AAEPMef5hjUKnPlZ6VnQvqd6tMnj8JFZVAw";
+        document.getElementById('tg-chat-id').value = localStorage.getItem('tg_chat_id') || "-4652382472";
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('rpt-start').value = today;
+        document.getElementById('rpt-end').value = today;
+        populateTypeFilter();
+        switchTab('Daily');
+      } catch(err) {
+        console.error(err);
+        showAlert('Unable to connect to the server.','error','Connection Failed');
+      } finally { document.getElementById('loader-overlay').style.display = 'none'; }
+    }
+
+    function populateLogin(users) {
+      const s = document.getElementById('user-select');
+      users.forEach(u => { let o = document.createElement('option'); o.value=u.name; o.text=u.name; s.appendChild(o); });
+    }
+
+    function populateTypeFilter() {
+      const types = new Set();
+      ['Daily','CK','Weekly','Monthly'].forEach(s => {
+        if(masterData.db[s]) masterData.db[s].forEach(i => { if(i.Type) types.add(i.Type); });
+      });
+      const sel = document.getElementById('type-filter');
+      sel.innerHTML = '<option value="All">All Types</option>';
+      [...types].sort().forEach(t => { sel.innerHTML += `<option value="${t}">${t}</option>`; });
+    }
+
+    function attemptLogin() {
+      const n = document.getElementById('user-select').value;
+      const p = document.getElementById('user-pass').value;
+      const u = masterData.users.find(x => x.name === n && x.pass == p);
+      if(u) {
+        currentUser = n;
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('display-user').innerText = n;
+        
+        // Apply Department Permissions
+        const userDept = u.dept || 'All';
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+          const tabName = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
+          if(u.role === 'Admin') {
+            btn.style.display = 'inline-block';
+          } else {
+            if(tabName === 'OOS' || tabName === userDept || userDept === 'All') {
+              btn.style.display = 'inline-block';
+            } else {
+              btn.style.display = 'none';
+            }
+          }
+        });
+
+        if(u.role === 'Admin') {
+          document.getElementById('btn-master').style.display = 'inline-block';
+          document.getElementById('btn-admin-report').style.display = 'flex';
+          document.getElementById('btn-admin-users').style.display = 'flex';
+          document.getElementById('admin-badge').style.display = 'inline-block';
+          document.getElementById('btn-user-mgmt').style.display = 'inline-block';
+        }
+        const h = new Date().getHours();
+        const greeting = h < 12 ? 'Good Morning' : h < 18 ? 'Good Afternoon' : 'Good Evening';
+        showAlert(`${greeting}, ${n}! 👋<br><br>Welcome to EZEM Inventory V4. Ready to manage your inventory! 🚀`,'success','Welcome! 🎉');
+        
+        // Auto-switch to their department if not admin
+        if(u.role !== 'Admin' && userDept !== 'All') switchTab(userDept);
+        else switchTab('Daily');
+
+      } else { document.getElementById('err-msg').style.display = 'block'; }
+    }
+
+    async function logout() {
+      if(await showConfirm('Are you sure you want to logout?','Logout')) {
+        currentUser=""; currentTab="Daily";
+        document.getElementById('btn-master').style.display='none';
+        document.getElementById('btn-admin-report').style.display='none';
+        document.getElementById('btn-admin-users').style.display='none';
+        document.getElementById('admin-badge').style.display='none';
+        document.getElementById('btn-user-mgmt').style.display='none';
+        document.getElementById('user-select').value='';
+        document.getElementById('user-pass').value='';
+        document.getElementById('err-msg').style.display='none';
+        document.getElementById('login-screen').style.display='flex';
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector('.tab-btn').classList.add('active');
+      }
+    }
+
+    // OOS Management
+    function getOOSItems() {
+      const oosData = JSON.parse(localStorage.getItem('oos_items') || '{}');
+      return oosData;
+    }
+    function setOOS(tab, code, isOOS) {
+      const oosData = getOOSItems();
+      const key = `${tab}_${code}`;
+      if(isOOS) oosData[key] = { tab, code, timestamp: Date.now() };
+      else delete oosData[key];
+      localStorage.setItem('oos_items', JSON.stringify(oosData));
+      flashSave();
+      updateStats();
+      updateBadges();
+    }
+    function isOOS(tab, code) {
+      const oosData = getOOSItems();
+      return !!oosData[`${tab}_${code}`];
+    }
+    function getAllOOSProducts() {
+      const oosData = getOOSItems();
+      const products = [];
+      Object.values(oosData).forEach(oos => {
+        const items = masterData.db[oos.tab] || [];
+        const item = items.find(i => i.Code === oos.code);
+        if(item) products.push({...item, _sourceTab: oos.tab});
+      });
+      return products;
+    }
+
+    // Tab switching
+    function switchTab(name) {
+      currentTab = name;
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        const tabName = b.textContent.trim().replace(/\d+$/,'').trim();
+        b.classList.toggle('active', b.onclick && b.onclick.toString().includes(`'${name}'`));
+      });
+      // Fix active state
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        if(b.getAttribute('onclick') && b.getAttribute('onclick').includes(`'${name}'`)) b.classList.add('active');
+      });
+
+      const isMaster = (name === 'Monthly Inventory');
+      const isOOS = (name === 'OOS');
+      document.getElementById('controls-area').style.display = isMaster ? 'block' : 'none';
+      document.getElementById('search-bar').style.display = isOOS ? 'none' : 'flex';
+      document.getElementById('search-input').value = '';
+      document.getElementById('type-filter').value = 'All';
+      if(isMaster) populateCycleFilter(); else renderTable();
+      updateStats();
+    }
+
+    function populateCycleFilter() {
+      const cycles = [...new Set(combinedInventory.map(i => i.Cycle||i.Type).filter(Boolean))].sort();
+      const sel = document.getElementById('filter-cycle');
+      sel.innerHTML = '<option value="All">All Cycles</option>';
+      cycles.forEach(c => { sel.innerHTML += `<option value="${c}">${c}</option>`; });
+      renderTable();
+    }
+
+    // Stats
+    function updateStats() {
+      const isMaster = currentTab === 'Monthly Inventory';
+      const isOOSTab = currentTab === 'OOS';
+      let items = isOOSTab ? getAllOOSProducts() : (isMaster ? combinedInventory : (masterData.db[currentTab]||[]));
+      const totalItems = items.length;
+      let counted = 0, totalCost = 0, oosCount = 0;
+
+      if(!isOOSTab && !isMaster) {
+        items.forEach(i => {
+          const q = localStorage.getItem(`draft_${currentTab}_${i.Code}`);
+          const qtyVal = parseFloat(q) || 0;
+          if(qtyVal !== 0) counted++;
+          if(isOOS(currentTab, i.Code)) oosCount++;
+          const cost = parseFloat(i.Cost) || 0;
+          totalCost += (cost * qtyVal);
+        });
+      } else if(isOOSTab) {
+        oosCount = totalItems;
+        // For OOS items, we show the potential value (Unit Cost sum) or 0? 
+        // Based on user request "Qty x Cost", and OOS Qty is effectively 0, 
+        // but often users want the "Value of missing stock". 
+        // However, standard inventory is Qty on hand. Let's keep it as 0 if Qty x Cost.
+        // Actually, let's show 0 for OOS value in stats to be consistent.
+        totalCost = 0;
+      } else {
+        items.forEach(i => {
+          const q1 = localStorage.getItem(`draft_Master_${i.Code}_q1`);
+          const q2 = localStorage.getItem(`draft_Master_${i.Code}_q2`);
+          const q3 = localStorage.getItem(`draft_Master_${i.Code}_q3`);
+          const tot = (parseFloat(q1)||0) + (parseFloat(q2)||0) + (parseFloat(q3)||0);
+          const cost = parseFloat(i.Cost) || 0;
+          totalCost += (cost * tot);
+        });
+      }
+
+      document.getElementById('stat-total').textContent = totalItems;
+      document.getElementById('stat-counted').textContent = counted;
+      document.getElementById('stat-oos').textContent = oosCount;
+      document.getElementById('stat-cost').textContent = `EGP ${totalCost.toLocaleString('en', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+    }
+
+    function updateBadges() {
+      ['Daily','CK','Weekly','Monthly'].forEach(tab => {
+        let count = 0;
+        const items = masterData.db[tab] || [];
+        items.forEach(i => {
+          const q = localStorage.getItem(`draft_${tab}_${i.Code}`);
+          if(q && parseFloat(q) !== 0) count++;
+        });
+        const badge = document.getElementById(`badge-${tab}`);
+        if(badge) { badge.textContent = count; badge.style.display = count > 0 ? 'inline-block' : 'none'; }
+      });
+      const oosCount = Object.keys(getOOSItems()).length;
+      const oosBadge = document.getElementById('badge-OOS');
+      if(oosBadge) { oosBadge.textContent = oosCount; oosBadge.style.display = oosCount > 0 ? 'inline-block' : 'none'; }
+    }
+
+    // Filter
+    function filterTable() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const typeF = document.getElementById('type-filter').value;
+      const rows = document.querySelectorAll('#table-body tr');
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        const type = row.dataset.type || '';
+        const matchSearch = !search || text.includes(search);
+        const matchType = typeF === 'All' || type === typeF;
+        row.style.display = (matchSearch && matchType) ? '' : 'none';
+      });
+    }
+
+    // Render
+    function renderTable() {
+      const tbody = document.getElementById('table-body');
+      const thead = document.getElementById('table-head');
+      const isMaster = currentTab === 'Monthly Inventory';
+      const isOOSTab = currentTab === 'OOS';
+
+      if(isMaster) {
+        thead.innerHTML = `<tr><th class="sticky-col sticky-col-ref">Ref</th><th class="sticky-col sticky-col-code">Code</th><th style="text-align:left">Item Name</th><th style="text-align:right">Arabic</th><th>WH Unit</th><th>Weight</th><th>Type</th><th>Cost</th><th class="admin-qty-col">Q1</th><th class="admin-qty-col">Q2</th><th class="admin-qty-col">Q3</th><th>Total</th></tr>`;
+      } else if(isOOSTab) {
+        thead.innerHTML = `<tr><th>Source</th><th>Refranc</th><th>Code</th><th style="text-align:left">Item Name</th><th style="text-align:right">Arabic</th><th>WH Unit</th><th>Weight</th><th>Type</th><th>Cost</th><th>Remove</th></tr>`;
+      } else {
+        thead.innerHTML = `<tr><th class="sticky-col sticky-col-ref">Ref</th><th class="sticky-col sticky-col-code">Code</th><th class="sticky-col sticky-col-qty" style="background:rgba(99,102,241,.15)">QTY</th><th style="text-align:left">Item Name</th><th style="text-align:right">Arabic</th><th>WH Unit</th><th>Weight</th><th>Type</th><th>Cost</th><th>OOS</th></tr>`;
+      }
+
+      let items;
+      if(isOOSTab) { items = getAllOOSProducts(); }
+      else if(isMaster) {
+        items = combinedInventory;
+        const f = document.getElementById('filter-cycle').value;
+        if(f !== 'All') items = items.filter(i => (i.Cycle||i.Type) === f);
+      } else { items = masterData.db[currentTab] || []; }
+
+      tbody.innerHTML = '';
+      if(items.length === 0) {
+        const cols = isMaster ? 12 : (isOOSTab ? 10 : 10);
+        tbody.innerHTML = `<tr><td colspan="${cols}" style="padding:40px;color:var(--text-muted)"><i class="fas fa-inbox" style="font-size:2rem;display:block;margin-bottom:10px"></i>No items found</td></tr>`;
+        updateStats(); updateBadges(); return;
+      }
+
+      items.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.dataset.type = item.Type || '';
+        const cost = parseFloat(item.Cost) || 0;
+
+        if(isMaster) {
+          const q1 = localStorage.getItem(`draft_Master_${item.Code}_q1`) || '';
+          const q2 = localStorage.getItem(`draft_Master_${item.Code}_q2`) || '';
+          const q3 = localStorage.getItem(`draft_Master_${item.Code}_q3`) || '';
+          const tot = (parseFloat(q1)||0) + (parseFloat(q2)||0) + (parseFloat(q3)||0);
+          tr.innerHTML = `<td class="sticky-col sticky-col-ref">${item.Refranc||'-'}</td><td class="sticky-col sticky-col-code">${item.Code}</td><td style="text-align:left">${item['Item Name']}</td><td style="text-align:right">${item.Arabic||''}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item['Unit Weight']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td><td class="admin-qty-col"><input type="number" class="qty-input mini" value="${q1}" oninput="saveM('${item.Code}','q1',this)"></td><td class="admin-qty-col"><input type="number" class="qty-input mini" value="${q2}" oninput="saveM('${item.Code}','q2',this)"></td><td class="admin-qty-col"><input type="number" class="qty-input mini" value="${q3}" oninput="saveM('${item.Code}','q3',this)"></td><td><input readonly class="qty-input total" id="tot_${item.Code}" value="${tot > 0 ? tot : ''}"></td>`;
+        } else if(isOOSTab) {
+          tr.innerHTML = `<td><span style="background:var(--primary);color:white;padding:2px 8px;border-radius:6px;font-size:10px">${item._sourceTab}</span></td><td>${item.Refranc||'-'}</td><td style="font-family:monospace;color:var(--primary-light);font-weight:700">${item.Code}</td><td style="text-align:left">${item['Item Name']}</td><td style="text-align:right">${item.Arabic||''}</td><td>${item['WH Unit']||''}</td><td>${item['Unit Weight']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td><td><button onclick="removeOOS('${item._sourceTab}','${item.Code}')" style="background:var(--secondary);color:white;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px"><i class="fas fa-undo"></i></button></td>`;
+        } else {
+          const val = localStorage.getItem(`draft_${currentTab}_${item.Code}`) || '';
+          const itemOOS = isOOS(currentTab, item.Code);
+          if(itemOOS) tr.classList.add('oos-row');
+          tr.innerHTML = `<td class="sticky-col sticky-col-ref">${item.Refranc||'-'}</td><td class="sticky-col sticky-col-code">${item.Code}</td><td class="sticky-col sticky-col-qty"><input type="number" class="qty-input ${val ? 'has-value' : ''}" value="${val}" oninput="saveD('${item.Code}',this)" ${itemOOS ? 'disabled' : ''}></td><td style="text-align:left">${item['Item Name']}</td><td style="text-align:right">${item.Arabic||''}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item['Unit Weight']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td><td class="oos-cell"><input type="checkbox" class="oos-toggle" ${itemOOS ? 'checked' : ''} onchange="toggleOOS('${currentTab}','${item.Code}',this.checked)"></td>`;
+        }
+        tbody.appendChild(tr);
+      });
+      updateStats();
+      updateBadges();
+    }
+
+    function saveD(code, el) {
+      localStorage.setItem(`draft_${currentTab}_${code}`, el.value);
+      el.classList.toggle('has-value', !!el.value);
+      flashSave(); updateStats(); updateBadges();
+    }
+    function saveM(code, type, el) {
+      localStorage.setItem(`draft_Master_${code}_${type}`, el.value);
+      const q1 = parseFloat(localStorage.getItem(`draft_Master_${code}_q1`))||0;
+      const q2 = parseFloat(localStorage.getItem(`draft_Master_${code}_q2`))||0;
+      const q3 = parseFloat(localStorage.getItem(`draft_Master_${code}_q3`))||0;
+      document.getElementById(`tot_${code}`).value = (q1+q2+q3) > 0 ? (q1+q2+q3) : '';
+      flashSave();
+    }
+    function toggleOOS(tab, code, checked) {
+      setOOS(tab, code, checked);
+      renderTable();
+    }
+    function removeOOS(tab, code) {
+      setOOS(tab, code, false);
+      renderTable();
+    }
+
+    // Upload
+    async function confirmUpload() {
+      const isMaster = currentTab === 'Monthly Inventory';
+      if(currentTab === 'OOS') return showAlert('OOS tab is view-only. Switch to another tab to upload.','warning');
+      if(!await showConfirm(`Upload data to ${currentTab}?`,'Upload Confirmation')) return;
+      let uploadItems = [];
+      if(isMaster) {
+        uploadItems = combinedInventory.map(i => {
+          const q1 = localStorage.getItem(`draft_Master_${i.Code}_q1`);
+          const q2 = localStorage.getItem(`draft_Master_${i.Code}_q2`);
+          const q3 = localStorage.getItem(`draft_Master_${i.Code}_q3`);
+          const total = (parseFloat(q1)||0)+(parseFloat(q2)||0)+(parseFloat(q3)||0);
+          return {code:i.Code,name:i['Item Name'],arabic:i.Arabic,unit:i['WH Unit'],ref:i.Refranc,weight:i['Unit Weight'],type:i.Type,cycle:i.Cycle,cost:i.Cost,qty1:q1,qty2:q2,qty3:q3,total};
+        }).filter(i => i.total > 0);
+      } else {
+        const raw = masterData.db[currentTab] || [];
+        uploadItems = raw.map(i => {
+          const q = localStorage.getItem(`draft_${currentTab}_${i.Code}`);
+          return {code:i.Code,name:i['Item Name'],arabic:i.Arabic,unit:i['WH Unit'],ref:i.Refranc,weight:i['Unit Weight'],type:i.Type,cost:i.Cost,qty:q};
+        }).filter(i => i.qty && parseFloat(i.qty) !== 0);
+      }
+      if(!uploadItems.length) return showAlert('No data to upload.','warning','No Data');
+
+      document.getElementById('loader-message').innerText = 'Uploading Data';
+      document.getElementById('loader-overlay').style.display = 'flex';
+      fetch(SCRIPT_URL, {method:'POST',body:JSON.stringify({action:"upload",sheetName:currentTab,userName:currentUser,items:uploadItems})
+      }).then(async r => { if(!r.ok) throw new Error('Server '+r.status); return r.json(); }).then(async res => {
+        document.getElementById('loader-overlay').style.display='none';
+        if(res.status==='success') {
+          await showAlert(res.msg,'success');
+          
+          // Auto OOS Telegram Report
+          if(!isMaster) {
+            const oosItems = getAllOOSProducts().filter(i => i._sourceTab === currentTab);
+            if(oosItems.length > 0) {
+              sendOOSAutoReport(oosItems, currentTab);
+            }
+          }
+
+          if(isMaster) combinedInventory.forEach(item => ['q1','q2','q3'].forEach(s => localStorage.removeItem(`draft_Master_${item.Code}_${s}`)));
+          else (masterData.db[currentTab]||[]).forEach(item => localStorage.removeItem(`draft_${currentTab}_${item.Code}`));
+          renderTable();
+        } else showAlert(res.msg,'error');
+      }).catch(err => { document.getElementById('loader-overlay').style.display='none'; console.error(err); showAlert('Network error.','error'); });
+    }
+
+    function sendOOSAutoReport(oosItems, section) {
+      const normalizedItems = oosItems.map(item => ({
+        ref: item.Refranc || item.ref || '',
+        code: item.Code || item.code || '',
+        name: item['Item Name'] || item.name || '',
+        arabic: item.Arabic || item.arabic || '',
+        unit: item['WH Unit'] || item.unit || '',
+        weight: item['Unit Weight'] || item.weight || '',
+        type: item.Type || item.type || '',
+        cost: item.Cost || item.cost || 0,
+        qty: 0
+      }));
+
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'oos_update',
+          items: normalizedItems,
+          section: section,
+          user: currentUser,
+          botToken: localStorage.getItem('tg_bot_token'),
+          chatId: localStorage.getItem('tg_chat_id')
+        })
+      });
+    }
+
+    async function clearAllInputs() {
+      if(await showConfirm(`Clear ALL inputs for ${currentTab}?`,'Clear All')) {
+        const isMaster = currentTab === 'Monthly Inventory';
+        if(isMaster) combinedInventory.forEach(item => ['q1','q2','q3'].forEach(s => localStorage.removeItem(`draft_Master_${item.Code}_${s}`)));
+        else (masterData.db[currentTab]||[]).forEach(item => localStorage.removeItem(`draft_${currentTab}_${item.Code}`));
+        renderTable();
+        showAlert(`All inputs for ${currentTab} cleared!`,'success');
+      }
+    }
+
+    // TG
+    function saveTgSettings() {
+      localStorage.setItem('tg_bot_token', document.getElementById('tg-token').value);
+      localStorage.setItem('tg_chat_id', document.getElementById('tg-chat-id').value);
+      showAlert('Settings saved!','success');
+    }
+    function openTgModal() { document.getElementById('tg-modal').style.display = 'flex'; }
+
+    // Reports
+    function openReportView() { document.getElementById('report-view').style.display='flex'; }
+    function closeReportView() { document.getElementById('report-view').style.display='none'; }
+    function fetchReport() {
+      const d1 = document.getElementById('rpt-start').value, d2 = document.getElementById('rpt-end').value;
+      const sec = document.getElementById('rpt-section').value;
+      const tbody = document.getElementById('report-body');
+      const tfoot = document.getElementById('report-foot');
+      tbody.innerHTML = '<tr><td colspan="10" style="padding:20px">Loading...</td></tr>';
+      tfoot.innerHTML = '';
+      fetch(SCRIPT_URL, {method:'POST',body:JSON.stringify({action:'getReport',dateFrom:d1,dateTo:d2,section:sec})}).then(r=>r.json()).then(res=>{
+        tbody.innerHTML='';
+        if(res.report && res.report.length > 0) {
+          currentReportData = res.report;
+          let grandTotal = 0;
+          
+          // Grouping by Section
+          const sections = ["Daily", "CK", "Weekly", "Monthly", "Monthly Inventory"];
+          sections.forEach(secName => {
+            const secData = res.report.filter(r => r.section === secName);
+            if(secData.length > 0) {
+              // Section Header
+              tbody.innerHTML += `<tr style="background:rgba(99,102,241,0.1)"><td colspan="11" style="text-align:left;font-weight:800;padding:10px;color:var(--primary-light)"><i class="fas fa-folder-open"></i> SECTION: ${secName}</td></tr>`;
+              
+              let secTotal = 0;
+              secData.forEach(r => {
+                const cost = parseFloat(r.Cost || r.cost || 0);
+                const qty = parseFloat(r.Qty || r.qty || r.QTY || 0);
+                const rowTotal = cost * qty;
+                secTotal += rowTotal;
+                grandTotal += rowTotal;
+                const ref = r.Refranc || r.ref || '-';
+                const name = r['Item Name'] || r.name || '';
+                const weight = r['Unit Weight'] || r.weight || '';
+                const unit = r['WH Unit'] || r.unit || '';
+                
+                tbody.innerHTML += `<tr><td>${ref}</td><td>${r.code || r.Code}</td><td style="text-align:left">${name}</td><td>${unit}</td><td>${weight}</td><td>${r.type||r.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost.toFixed(2)}</td><td>${qty}</td><td style="color:var(--secondary);font-weight:700">${rowTotal.toFixed(2)}</td><td>${r.user||r.User}</td><td>${(r.date||r.Date||'').split('T')[0]}</td></tr>`;
+              });
+              
+              // Section Subtotal with Black Background and Item Count
+              tbody.innerHTML += `<tr style="background:#0f172a;color:#fff"><td colspan="8" style="text-align:right;font-weight:700;font-size:12px;padding:8px 12px">Subtotal ${secName} (${secData.length} Items):</td><td colspan="3" style="font-weight:800;color:#10b981;padding:8px 12px">EGP ${secTotal.toLocaleString('en',{minimumFractionDigits:2})}</td></tr>`;
+            }
+          });
+          
+          tfoot.innerHTML = '';
+        } else { currentReportData=[]; tbody.innerHTML='<tr><td colspan="11" style="padding:30px;color:var(--text-muted)">No Data</td></tr>'; }
+      });
+    }
+
+    function exportReportToExcel() {
+      if(!currentReportData.length) return showAlert('Generate a report first.','warning');
+      let csv = "data:text/csv;charset=utf-8,Section,Refranc,Code,Item Name,WH Unit,Unit Weight,Type,Cost,QTY,Total Cost,User,Date\n";
+      currentReportData.forEach(r => { 
+        const c = parseFloat(r.Cost||r.cost||0);
+        const q = parseFloat(r.Qty||r.qty||r.QTY||0);
+        csv += `${r.section},${r.Refranc||r.ref||''},${r.Code||r.code},"${r['Item Name']||r.name}",${r['WH Unit']||r.unit||''},${r['Unit Weight']||r.weight||''},${r.Type||r.type||''},${c},${q},${(c*q).toFixed(2)},${r.User||r.user},${r.Date||r.date}\n`; 
+      });
+      const link = document.createElement("a"); link.href = encodeURI(csv);
+      link.download = `EZEM_Report_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link); link.click(); link.remove();
+    }
+
+    // PDF Header builder
+    function addPDFHeader(doc, sheetName) {
+      const pw = doc.internal.pageSize.width;
+      const timestamp = new Date();
+      const dateStr = timestamp.toLocaleDateString('en-GB');
+      const timeStr = timestamp.toLocaleTimeString('en-GB', {hour12:true});
+
+      // Header background
+      doc.setFillColor(30, 41, 59);
+      doc.rect(0, 0, pw, 28, 'F');
+      doc.setFillColor(99, 102, 241);
+      doc.rect(0, 28, pw, 1.5, 'F');
+
+      // Header text
+      doc.setFontSize(14); doc.setFont("helvetica","bold"); doc.setTextColor(255);
+      doc.text("EZEM Inventory System", 15, 10);
+      doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(200);
+      doc.text(`Sheet: ${sheetName}`, 15, 17);
+      doc.text(`User: ${currentUser}`, 15, 23);
+      doc.text(`System: The Drive 2`, pw/2, 17, {align:'center'});
+      doc.text(`Date: ${dateStr}`, pw - 15, 17, {align:'right'});
+      doc.text(`Time: ${timeStr}`, pw - 15, 23, {align:'right'});
+      doc.setTextColor(0);
+    }
+
+    function addPDFFooter(doc, totalCost) {
+      const pw = doc.internal.pageSize.width;
+      const ph = doc.internal.pageSize.height;
+      const pages = doc.internal.getNumberOfPages();
+      for(let i = 1; i <= pages; i++) {
+        doc.setPage(i);
+        doc.setFillColor(241, 245, 249);
+        doc.rect(0, ph-12, pw, 12, 'F');
+        doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.setTextColor(100);
+        doc.text(`Page ${i} of ${pages}`, 15, ph - 5);
+        doc.text(`Generated: ${new Date().toLocaleString('en-GB')}`, pw/2, ph-5, {align:'center'});
+        if(totalCost !== undefined) doc.text(`Total Cost: EGP ${totalCost.toLocaleString('en',{minimumFractionDigits:2})}`, pw - 15, ph-5, {align:'right'});
+      }
+    }
+
+    function exportReportToPDF() {
+      if(!currentReportData.length) return showAlert('Generate a report first.','warning');
+      const {jsPDF} = window.jspdf;
+      const doc = new jsPDF('l','mm','a4');
+      const sec = document.getElementById('rpt-section').value;
+      addPDFHeader(doc, sec);
+      let totalCost = 0;
+      const sections = ["Daily", "CK", "Weekly", "Monthly", "Monthly Inventory"];
+      const rows = [];
+      let grandTotal = 0;
+
+      sections.forEach(sec => {
+        const secItems = currentReportData.filter(r => r.section === sec);
+        if(secItems.length > 0) {
+          // Section Header row in PDF
+          rows.push([{content: `SECTION: ${sec}`, colSpan: 11, styles: {fillColor: [240, 240, 240], fontStyle: 'bold'}}]);
+          
+          let secTotal = 0;
+          secItems.forEach(r => {
+            const c = parseFloat(r.Cost || r.cost || 0); 
+            const q = parseFloat(r.Qty || r.qty || r.QTY || 0);
+            const rowTotal = c * q;
+            secTotal += rowTotal;
+            grandTotal += rowTotal;
+            rows.push([
+              r.Refranc || r.ref || '-', 
+              r.Code || r.code, 
+              r['Item Name'] || r.name, 
+              r['WH Unit'] || r.unit || '', 
+              r['Unit Weight'] || r.weight || '', 
+              r.Type || r.type || '', 
+              c.toFixed(2), 
+              q, 
+              rowTotal.toFixed(2),
+              r.User || r.user, 
+              (r.Date || r.date || '').split('T')[0]
+            ]);
+          });
+          // Subtotal row per section with Dark background in PDF
+          rows.push([{content: `Subtotal ${sec} (${secItems.length} Items): EGP ${secTotal.toLocaleString('en',{minimumFractionDigits:2})}`, colSpan: 11, styles: {halign: 'right', fontStyle: 'bold', fillColor: [30, 41, 59], textColor: [255, 255, 255]}}]);
+        }
+      });
+
+      doc.autoTable({
+        startY: 33,
+        head:[['Refranc','Code','Item Name','WH Unit','Unit Weight','Type','Cost','QTY','Total Cost','User','Date']],
+        body:rows,
+        foot:[['','','','','','','','GRAND TOTAL:',`EGP ${grandTotal.toLocaleString('en',{minimumFractionDigits:2})}`,'','']],
+        body:rows,
+        foot:[['','','','','','','','Total Cost:',`EGP ${totalCost.toLocaleString('en',{minimumFractionDigits:2})}`,'']],
+        theme:'grid',
+        tableWidth:'auto',
+        headStyles:{fillColor:[99,102,241], textColor:255, halign:'center', fontStyle:'bold', fontSize:9},
+        bodyStyles:{fontSize:8, valign:'middle'},
+        footStyles:{fillColor:[30,41,59], textColor:255, fontStyle:'bold', fontSize:9},
+        margin:{top:33, bottom:15},
+        didDrawPage: d => { addPDFHeader(doc, sec); }
+      });
+      addPDFFooter(doc, totalCost);
+      doc.save(`EZEM_Report_${sec}_${currentUser}_${new Date().toISOString().split('T')[0]}.pdf`);
+    }
+
+    function sendReportToTelegram() {
+      if(!currentReportData.length) return showAlert('Generate a report first.','warning');
+      
+      // Default values from code.gs
+      const defaultToken = "8475097712:AAEPMef5hjUKnPlZ6VnQvqd6tMnj8JFZVAw";
+      const defaultChatId = "-4652382472";
+      
+      // Use saved settings or defaults
+      let botToken = localStorage.getItem('tg_bot_token') || defaultToken;
+      let chatId = localStorage.getItem('tg_chat_id') || defaultChatId;
+      
+      // Auto-save defaults if not saved
+      if(!localStorage.getItem('tg_bot_token')) localStorage.setItem('tg_bot_token', defaultToken);
+      if(!localStorage.getItem('tg_chat_id')) localStorage.setItem('tg_chat_id', defaultChatId);
+      
+      showAlert('Sending report to Telegram...','info');
+      const section = document.getElementById('rpt-section').value;
+      
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'sendReportTelegram',
+          reportData: currentReportData,
+          section: section,
+          user: currentUser,
+          botToken: botToken,
+          chatId: chatId
+        })
+      })
+      .then(r => r.json())
+      .then(res => {
+        if(res.success) {
+          showAlert('Report sent to Telegram successfully!','success');
+        } else {
+          showAlert('Failed to send: ' + (res.error || 'Unknown error'),'error');
+        }
+      })
+      .catch(err => showAlert('Error: ' + err.message,'error'));
+    }
+
+
+    function generatePDF() {
+      const {jsPDF} = window.jspdf;
+      const doc = new jsPDF('l','mm','a4');
+      const isMaster = currentTab === 'Monthly Inventory';
+      const isOOSTab = currentTab === 'OOS';
+      const sheetName = currentTab;
+
+      let items, rows = [], totalCost = 0;
+      if(isOOSTab) {
+        items = getAllOOSProducts();
+        items.forEach(i => {
+          rows.push([i.Refranc||'-', i.Code, i['Item Name'], i.Arabic||'', i['WH Unit']||'', i['Unit Weight']||'', i.Type||'', (parseFloat(i.Cost)||0).toFixed(2), '0']);
+        });
+        totalCost = 0;
+      } else if(isMaster) {
+        items = combinedInventory;
+        items.forEach(i => {
+          const q1=localStorage.getItem(`draft_Master_${i.Code}_q1`), q2=localStorage.getItem(`draft_Master_${i.Code}_q2`), q3=localStorage.getItem(`draft_Master_${i.Code}_q3`);
+          const tot=(parseFloat(q1)||0)+(parseFloat(q2)||0)+(parseFloat(q3)||0);
+          const c=parseFloat(i.Cost)||0; 
+          if(tot>0) {
+            totalCost += (c * tot);
+            rows.push([i.Refranc||'-',i.Code,i['Item Name'],i.Arabic||'',i['WH Unit']||'',i['Unit Weight']||'',i.Type||'',c.toFixed(2),q1||'-',q2||'-',q3||'-',tot]);
+          }
+        });
+      } else {
+        items = masterData.db[currentTab] || [];
+        items.forEach(i => {
+          const q = localStorage.getItem(`draft_${currentTab}_${i.Code}`);
+          const qtyVal = parseFloat(q) || 0;
+          const c = parseFloat(i.Cost)||0; 
+          if(qtyVal !== 0) {
+            totalCost += (c * qtyVal);
+            rows.push([i.Refranc||'-',i.Code,i['Item Name'],i.Arabic||'',i['WH Unit']||'',i['Unit Weight']||'',i.Type||'',c.toFixed(2),q]);
+          }
+        });
+      }
+
+      if(rows.length === 0) return showAlert('No data to generate PDF.','warning','No Data');
+
+      addPDFHeader(doc, sheetName);
+
+      let head, foot;
+      if(isMaster) {
+        head = [['Refranc','Code','Item Name','WH Unit','Unit Weight','Type','Cost','Q1','Q2','Q3','Total','Date','User']];
+      } else if(isOOSTab) {
+        head = [['Refranc','Code','Item Name','WH Unit','Unit Weight','Type','Cost']];
+      } else {
+        head = [['Refranc','Code','Item Name','WH Unit','Unit Weight','Type','Cost','QTY','Total Cost','Date','User']];
+      }
+      foot = [Array(head[0].length-2).fill('').concat(['Total Cost:', `EGP ${totalCost.toLocaleString('en',{minimumFractionDigits:2})}`])];
+
+      doc.autoTable({
+        startY:33, head, body:rows, foot,
+        theme:'grid', tableWidth:'auto',
+        headStyles:{fillColor:[99,102,241],textColor:255,halign:'center',fontStyle:'bold',fontSize:9},
+        bodyStyles:{fontSize:8,valign:'middle'},
+        footStyles:{fillColor:[30,41,59],textColor:255,fontStyle:'bold',fontSize:9},
+        margin:{top:33,bottom:15},
+        didDrawPage: () => { addPDFHeader(doc, sheetName); }
+      });
+      addPDFFooter(doc, totalCost);
+      doc.save(`EZEM_${sheetName}_${currentUser}_${new Date().toISOString().split('T')[0]}.pdf`);
+      return doc;
+    }
+
+    async function sendToTelegram() {
+      const doc = generatePDF();
+      if(!doc) return;
+      const blob = doc.output('blob');
+      const fd = new FormData();
+      fd.append("chat_id", document.getElementById('tg-chat-id').value);
+      const fname = `EZEM_${currentTab}_${currentUser}_${new Date().toISOString().split('T')[0]}.pdf`;
+      fd.append("document", blob, fname);
+      fd.append("caption", `📊 EZEM Inventory Report\n📋 Sheet: ${currentTab}\n👤 User: ${currentUser}\n📅 ${new Date().toLocaleString('en-GB')}`);
+      try {
+        await fetch(`https://api.telegram.org/bot${document.getElementById('tg-token').value}/sendDocument`, {method:'POST',body:fd});
+        showAlert('Report sent to Telegram!','success');
+      } catch(e) { showAlert('Failed to send.','error'); }
+    }
+
+    function openTgModal() {
+      document.getElementById('tg-modal').style.display = 'flex';
+      // Load saved settings or use defaults from code.gs
+      const savedToken = localStorage.getItem('tg_bot_token');
+      const savedChatId = localStorage.getItem('tg_chat_id');
+      
+      // Default values from code.gs
+      const defaultToken = "8475097712:AAEPMef5hjUKnPlZ6VnQvqd6tMnj8JFZVAw";
+      const defaultChatId = "-4652382472";
+      
+      document.getElementById('tg-token').value = savedToken || defaultToken;
+      document.getElementById('tg-chat-id').value = savedChatId || defaultChatId;
+      
+      // Auto-save defaults if not saved
+      if(!savedToken) localStorage.setItem('tg_bot_token', defaultToken);
+      if(!savedChatId) localStorage.setItem('tg_chat_id', defaultChatId);
+    }
+
+    function saveTgSettings() {
+      const token = document.getElementById('tg-token').value.trim();
+      const chatId = document.getElementById('tg-chat-id').value.trim();
+      if(!token || !chatId) {
+        showAlert('Please enter both Bot Token and Chat ID.','warning');
+        return;
+      }
+      localStorage.setItem('tg_bot_token', token);
+      localStorage.setItem('tg_chat_id', chatId);
+      showAlert('Telegram settings saved successfully!','success');
+    }
+
+
+    // User Management
+    function openUserMgmt() {
+      document.getElementById('user-mgmt-modal').style.display = 'flex';
+      renderUserList();
+    }
+    function renderUserList() {
+      const tbody = document.getElementById('user-list-body');
+      tbody.innerHTML = '';
+      masterData.users.forEach(u => {
+        tbody.innerHTML += `<tr><td>${u.name}</td><td>${u.role}</td><td>${u.dept||'All'}</td><td><button onclick="editUser('${u.name}')" class="btn-action mini" style="background:var(--primary);padding:4px 8px;font-size:10px">Edit</button></td></tr>`;
+      });
+    }
+    function editUser(name) {
+      const u = masterData.users.find(x => x.name === name);
+      if(!u) return;
+      document.getElementById('new-user-name').value = u.name;
+      document.getElementById('new-user-pass').value = u.pass;
+      document.getElementById('new-user-role').value = u.role;
+      document.getElementById('new-user-dept').value = u.dept || 'All';
+    }
+    function saveUser() {
+      const n = document.getElementById('new-user-name').value;
+      const p = document.getElementById('new-user-pass').value;
+      const r = document.getElementById('new-user-role').value;
+      const d = document.getElementById('new-user-dept').value;
+      if(!n || !p) return showAlert('Name and Password required','warning');
+      
+      document.getElementById('loader-message').innerText = 'Saving User';
+      document.getElementById('loader-overlay').style.display = 'flex';
+      
+      fetch(SCRIPT_URL, {method:'POST',body:JSON.stringify({action:"saveUser",userData:{name:n,pass:p,role:r,dept:d}})})
+      .then(r=>r.json()).then(res => {
+        document.getElementById('loader-overlay').style.display='none';
+        if(res.status==='success') {
+          showAlert(res.msg,'success');
+          // Refresh local user list
+          const idx = masterData.users.findIndex(x => x.name === n);
+          if(idx > -1) masterData.users[idx] = {name:n,pass:p,role:r,dept:d};
+          else masterData.users.push({name:n,pass:p,role:r,dept:d});
+          renderUserList();
+          populateLogin(masterData.users);
+        } else showAlert(res.msg,'error');
+      });
+    }
+
+    async function sendOOSAutoReport(oosItems, tabName) {
+      if(!oosItems || oosItems.length === 0) return;
+      
+      const {jsPDF} = window.jspdf;
+      const doc = new jsPDF('l','mm','a4');
+      const sheetName = `OOS ALERT - ${tabName}`;
+
+      let rows = [], totalCost = 0;
+      oosItems.forEach(i => {
+        // OOS implies qty 0 for current count, so Total Cost for these is 0
+        rows.push([i.Refranc||'-', i.Code, i['Item Name'], i['WH Unit']||'', i['Unit Weight']||'', i.Type||'', (parseFloat(i.Cost)||0).toFixed(2), '0', '0.00', currentUser, new Date().toISOString().split('T')[0]]);
+      });
+      totalCost = 0;
+
+      addPDFHeader(doc, sheetName);
+
+      const head = [['Refranc','Code','Item Name','WH Unit','Unit Weight','Type','Cost','QTY','Total Cost','User','Date']];
+      const foot = [Array(head[0].length-2).fill('').concat(['Total Cost:', `EGP ${totalCost.toLocaleString('en',{minimumFractionDigits:2})}`])];
+
+      doc.autoTable({
+        startY: 33,
+        head,
+        body: rows,
+        foot,
+        theme: 'grid',
+        tableWidth: 'auto',
+        headStyles: {fillColor: [239, 68, 68], textColor: 255, halign: 'center', fontStyle: 'bold', fontSize: 9},
+        bodyStyles: {fontSize: 8, valign: 'middle'},
+        footStyles: {fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold', fontSize: 9},
+        margin: {top: 33, bottom: 15},
+        didDrawPage: () => { addPDFHeader(doc, sheetName); }
+      });
+
+      addPDFFooter(doc, totalCost);
+
+      const blob = doc.output('blob');
+      const fd = new FormData();
+      fd.append("chat_id", document.getElementById('tg-chat-id').value);
+      fd.append("document", blob, `OOS_Alert_${tabName}.pdf`);
+      fd.append("caption", `🚨 *OUT OF STOCK ALERT*\n\nItems marked as OOS during *${tabName}* inventory upload.\n\n👤 Reported by: ${currentUser}\n📅 Date: ${new Date().toLocaleString('en-GB')}`);
+      
+      try {
+        await fetch(`https://api.telegram.org/bot${document.getElementById('tg-token').value}/sendDocument`, {method:'POST',body:fd});
+        console.log("OOS Auto-report sent to Telegram.");
+      } catch(e) { console.error("Failed to send OOS auto-report", e); }
+    }
+
+    window.onload = initSystem;
+  </script>
+</body>
+</html>
