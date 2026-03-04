@@ -122,9 +122,8 @@
 
     .sticky-col{position:sticky;background:var(--bg-card);z-index:30;border-right:1px solid var(--border)}
     .sticky-col-ref{left:0;width:50px}
-    .sticky-col-code{left:50px;width:90px;font-family:'Courier New',monospace;font-weight:700;color:var(--primary-light);font-size:11px}
-    .sticky-col-qty{left:140px;width:65px;background:rgba(99,102,241,.1)!important}
-    .sticky-col-oos{left:205px;width:45px}
+    .sticky-col-qty{left:50px;width:65px;background:rgba(99,102,241,.1)!important}
+    .sticky-col-oos{left:115px;width:45px}
     th.sticky-col{background:var(--bg-elevated);z-index:60}
 
     .qty-input{width:100%;padding:6px 0;border:1px solid transparent;background:transparent;border-radius:8px;text-align:center;font-size:14px;font-weight:700;color:var(--text);transition:.2s;height:32px;min-width:50px}
@@ -638,11 +637,11 @@
       const isOOSTab = currentTab === 'OOS';
 
       if(isMaster) {
-        thead.innerHTML = `<tr><th class="sticky-col sticky-col-ref">Refranc</th><th class="sticky-col sticky-col-code">Code</th><th style="text-align:left">Item Name</th><th>WH Unit</th><th>Type</th><th>Cost</th><th class="admin-qty-col">Q1</th><th class="admin-qty-col">Q2</th><th class="admin-qty-col">Q3</th><th>Total QTY</th></tr>`;
+        thead.innerHTML = `<tr><th class="sticky-col sticky-col-ref">Refranc</th><th>Code</th><th style="text-align:left">Item Name</th><th>WH Unit</th><th>Type</th><th>Cost</th><th class="admin-qty-col">Q1</th><th class="admin-qty-col">Q2</th><th class="admin-qty-col">Q3</th><th>Total QTY</th></tr>`;
       } else if(isOOSTab) {
         thead.innerHTML = `<tr><th>Source</th><th>Refranc</th><th>Code</th><th style="text-align:left">Item Name</th><th>WH Unit</th><th>Type</th><th>Cost</th><th>Remove</th></tr>`;
       } else {
-        thead.innerHTML = `<tr><th class="sticky-col sticky-col-ref">Refranc</th><th class="sticky-col sticky-col-code">Code</th><th class="sticky-col sticky-col-qty">QTY</th><th class="sticky-col sticky-col-oos">OOS</th><th style="text-align:left">Item Name</th><th>WH Unit</th><th>Type</th><th>Cost</th></tr>`;
+        thead.innerHTML = `<tr><th class="sticky-col sticky-col-ref">Refranc</th><th>Code</th><th class="sticky-col sticky-col-qty">QTY</th><th class="sticky-col sticky-col-oos">OOS</th><th style="text-align:left">Item Name</th><th>WH Unit</th><th>Type</th><th>Cost</th></tr>`;
       }
 
       let items;
@@ -678,14 +677,14 @@
           const q3 = q3raw !== null ? q3raw : '';
           const tot = (parseFloat(q1)||0) + (parseFloat(q2)||0) + (parseFloat(q3)||0);
           const safeCode = item.Code.replace(/'/g, "\\'");
-          tr.innerHTML = `<td class="sticky-col sticky-col-ref" style="width:50px">${item.Refranc||item.ref||'-'}</td><td class="sticky-col sticky-col-code" style="width:90px">${item.Code}</td><td style="text-align:left;min-width:150px">${item['Item Name']}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td><td class="admin-qty-col"><input type="number" min="0" class="qty-input mini ${q1 ? 'has-value' : ''}" value="${q1}" oninput="saveM('${safeCode}','q1',this)"></td><td class="admin-qty-col"><input type="number" min="0" class="qty-input mini ${q2 ? 'has-value' : ''}" value="${q2}" oninput="saveM('${safeCode}','q2',this)"></td><td class="admin-qty-col"><input type="number" min="0" class="qty-input mini ${q3 ? 'has-value' : ''}" value="${q3}" oninput="saveM('${safeCode}','q3',this)"></td><td><input readonly class="qty-input total" id="tot_${item.Code}" value="${tot > 0 ? tot : ''}"></td>`;
+          tr.innerHTML = `<td class="sticky-col sticky-col-ref" style="width:50px">${item.Refranc||item.ref||'-'}</td><td style="width:90px">${item.Code}</td><td style="text-align:left;min-width:150px">${item['Item Name']}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td><td class="admin-qty-col"><input type="number" min="0" class="qty-input mini ${q1 ? 'has-value' : ''}" value="${q1}" oninput="saveM('${safeCode}','q1',this)"></td><td class="admin-qty-col"><input type="number" min="0" class="qty-input mini ${q2 ? 'has-value' : ''}" value="${q2}" oninput="saveM('${safeCode}','q2',this)"></td><td class="admin-qty-col"><input type="number" min="0" class="qty-input mini ${q3 ? 'has-value' : ''}" value="${q3}" oninput="saveM('${safeCode}','q3',this)"></td><td><input readonly class="qty-input total" id="tot_${item.Code}" value="${tot > 0 ? tot : ''}"></td>`;
         } else if(isOOSTab) {
           tr.innerHTML = `<td><span style="background:var(--primary);color:white;padding:2px 8px;border-radius:6px;font-size:10px">${item._sourceTab}</span></td><td>${item.Refranc||item.ref||'-'}</td><td style="font-family:monospace;color:var(--primary-light);font-weight:700">${item.Code}</td><td style="text-align:left">${item['Item Name']}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td><td><button onclick="removeOOS('${item._sourceTab}','${item.Code}')" style="background:var(--secondary);color:white;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px"><i class="fas fa-undo"></i></button></td>`;
         } else {
           const val = localStorage.getItem(`draft_${currentTab}_${item.Code}`) || '';
           const itemOOS = isOOS(currentTab, item.Code);
           if(itemOOS) tr.classList.add('oos-row');
-          tr.innerHTML = `<td class="sticky-col sticky-col-ref" style="width:50px">${item.Refranc||item.ref||'-'}</td><td class="sticky-col sticky-col-code" style="width:90px">${item.Code}</td><td class="sticky-col sticky-col-qty" style="width:65px"><input type="number" min="0" class="qty-input ${val ? 'has-value' : ''}" value="${val}" oninput="saveD('${item.Code}',this)" ${itemOOS ? 'disabled' : ''}></td><td class="sticky-col sticky-col-oos" style="width:45px"><input type="checkbox" class="oos-toggle" ${itemOOS ? 'checked' : ''} onchange="toggleOOS('${currentTab}','${item.Code}',this.checked)"></td><td style="text-align:left;min-width:150px">${item['Item Name']}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td>`;
+          tr.innerHTML = `<td class="sticky-col sticky-col-ref" style="width:50px">${item.Refranc||item.ref||'-'}</td><td style="width:90px">${item.Code}</td><td class="sticky-col sticky-col-qty" style="width:65px"><input type="number" min="0" class="qty-input ${val ? 'has-value' : ''}" value="${val}" oninput="saveD('${item.Code}',this)" ${itemOOS ? 'disabled' : ''}></td><td class="sticky-col sticky-col-oos" style="width:45px"><input type="checkbox" class="oos-toggle" ${itemOOS ? 'checked' : ''} onchange="toggleOOS('${currentTab}','${item.Code}',this.checked)"></td><td style="text-align:left;min-width:150px">${item['Item Name']}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td>`;
         }
         tbody.appendChild(tr);
       });
