@@ -121,9 +121,10 @@
     tr:hover td{background:rgba(99,102,241,.05)}
 
     .sticky-col{position:sticky;background:var(--bg-card);z-index:30;border-right:1px solid var(--border)}
-    .sticky-col-ref{left:0;width:60px}
-    .sticky-col-code{left:60px;width:70px;font-family:'Courier New',monospace;font-weight:700;color:var(--primary-light);font-size:11px}
-    .sticky-col-qty{left:130px;width:70px;background:rgba(99,102,241,.1)!important}
+    .sticky-col-ref{left:0;width:50px}
+    .sticky-col-code{left:50px;width:90px;font-family:'Courier New',monospace;font-weight:700;color:var(--primary-light);font-size:11px}
+    .sticky-col-qty{left:140px;width:65px;background:rgba(99,102,241,.1)!important}
+    .sticky-col-oos{left:205px;width:45px}
     th.sticky-col{background:var(--bg-elevated);z-index:60}
 
     .qty-input{width:100%;padding:6px 0;border:1px solid transparent;background:transparent;border-radius:8px;text-align:center;font-size:14px;font-weight:700;color:var(--text);transition:.2s;height:32px;min-width:50px}
@@ -133,7 +134,7 @@
     .oos-toggle{width:18px;height:18px;cursor:pointer;accent-color:var(--warning)}
     tr.oos-row td{opacity:.5;text-decoration:line-through}
     tr.oos-row .sticky-col-qty{text-decoration:none;opacity:1}
-    tr.oos-row .oos-cell{text-decoration:none;opacity:1}
+    tr.oos-row .sticky-col-oos{text-decoration:none;opacity:1}
 
     .admin-qty-col{width:45px;padding:2px}
     .qty-input.mini{width:38px;border:1px solid var(--border);background:var(--bg-elevated);font-size:12px}
@@ -257,7 +258,7 @@
 
   <div class="search-bar" id="search-bar">
     <i class="fas fa-search" style="color:var(--text-muted)"></i>
-    <input type="text" class="search-input" id="search-input" placeholder="Search by code, name, or arabic..." oninput="filterTable()">
+    <input type="text" class="search-input" id="search-input" placeholder="Search by code or name..." oninput="filterTable()">
     <select class="filter-select" id="type-filter" onchange="filterTable()"><option value="All">All Types</option></select>
   </div>
 
@@ -310,7 +311,7 @@
       <div style="overflow:auto;flex:1;border:1px solid var(--border);border-radius:10px">
         <table id="report-table">
           <thead style="background:var(--bg-elevated)"><tr>
-            <th>Refranc</th><th>Code</th><th>Item Name</th><th>WH Unit</th><th>Unit Weight</th><th>Type</th><th>Cost</th><th>QTY</th><th>Total Cost</th><th>User</th><th>Date</th>
+            <th>Refranc</th><th>Code</th><th>Item Name</th><th>WH Unit</th><th>Type</th><th>Cost</th><th>QTY</th><th>Total Cost</th><th>User</th><th>Date</th>
           </tr></thead>
           <tbody id="report-body"></tbody>
           <tfoot id="report-foot"></tfoot>
@@ -423,14 +424,10 @@
         const res = await fetch(SCRIPT_URL);
         masterData = await res.json();
         populateLogin(masterData.users);
-        const allSheets = ['Daily','CK','Weekly','Monthly'];
-        let map = new Map();
-        allSheets.forEach(s => {
-          if(masterData.db[s]) masterData.db[s].forEach(item => {
-            if(!map.has(item.Code)) map.set(item.Code, {...item});
-          });
-        });
-        combinedInventory = Array.from(map.values());
+        
+        // masterData.db is now a flat array from DB_Items
+        combinedInventory = masterData.db || [];
+        
         document.getElementById('tg-token').value = localStorage.getItem('tg_bot_token') || "8475097712:AAEPMef5hjUKnPlZ6VnQvqd6tMnj8JFZVAw";
         document.getElementById('tg-chat-id').value = localStorage.getItem('tg_chat_id') || "-4652382472";
         const today = new Date().toISOString().split('T')[0];
@@ -451,9 +448,7 @@
 
     function populateTypeFilter() {
       const types = new Set();
-      ['Daily','CK','Weekly','Monthly'].forEach(s => {
-        if(masterData.db[s]) masterData.db[s].forEach(i => { if(i.Type) types.add(i.Type); });
-      });
+      combinedInventory.forEach(i => { if(i.Type) types.add(i.Type); });
       const sel = document.getElementById('type-filter');
       sel.innerHTML = '<option value="All">All Types</option>';
       [...types].sort().forEach(t => { sel.innerHTML += `<option value="${t}">${t}</option>`; });
@@ -541,8 +536,7 @@
       const oosData = getOOSItems();
       const products = [];
       Object.values(oosData).forEach(oos => {
-        const items = masterData.db[oos.tab] || [];
-        const item = items.find(i => i.Code === oos.code);
+        const item = combinedInventory.find(i => i.Code === oos.code);
         if(item) products.push({...item, _sourceTab: oos.tab});
       });
       return products;
@@ -572,7 +566,7 @@
     }
 
     function populateCycleFilter() {
-      const cycles = [...new Set(combinedInventory.map(i => i.Cycle||i.Type).filter(Boolean))].sort();
+      const cycles = [...new Set(combinedInventory.map(i => i.Type).filter(Boolean))].sort();
       const sel = document.getElementById('filter-cycle');
       sel.innerHTML = '<option value="All">All Cycles</option>';
       cycles.forEach(c => { sel.innerHTML += `<option value="${c}">${c}</option>`; });
@@ -583,37 +577,20 @@
     function updateStats() {
       const isMaster = currentTab === 'Monthly Inventory';
       const isOOSTab = currentTab === 'OOS';
-      let items = isOOSTab ? getAllOOSProducts() : (isMaster ? combinedInventory : (masterData.db[currentTab]||[]));
+      let items = isOOSTab ? getAllOOSProducts() : (isMaster ? combinedInventory : combinedInventory.filter(i => {
+        return (i.Type || '').toString().trim().toLowerCase() === currentTab.toLowerCase();
+      }));
       const totalItems = items.length;
       let counted = 0, totalCost = 0, oosCount = 0;
 
-      if(!isOOSTab && !isMaster) {
-        items.forEach(i => {
-          const q = localStorage.getItem(`draft_${currentTab}_${i.Code}`);
-          const qtyVal = parseFloat(q) || 0;
-          if(qtyVal !== 0) counted++;
-          if(isOOS(currentTab, i.Code)) oosCount++;
-          const cost = parseFloat(i.Cost) || 0;
-          totalCost += (cost * qtyVal);
-        });
-      } else if(isOOSTab) {
-        oosCount = totalItems;
-        // For OOS items, we show the potential value (Unit Cost sum) or 0? 
-        // Based on user request "Qty x Cost", and OOS Qty is effectively 0, 
-        // but often users want the "Value of missing stock". 
-        // However, standard inventory is Qty on hand. Let's keep it as 0 if Qty x Cost.
-        // Actually, let's show 0 for OOS value in stats to be consistent.
-        totalCost = 0;
-      } else {
-        items.forEach(i => {
-          const q1 = localStorage.getItem(`draft_Master_${i.Code}_q1`);
-          const q2 = localStorage.getItem(`draft_Master_${i.Code}_q2`);
-          const q3 = localStorage.getItem(`draft_Master_${i.Code}_q3`);
-          const tot = (parseFloat(q1)||0) + (parseFloat(q2)||0) + (parseFloat(q3)||0);
-          const cost = parseFloat(i.Cost) || 0;
-          totalCost += (cost * tot);
-        });
-      }
+      items.forEach(i => {
+        const q = localStorage.getItem(`draft_${currentTab}_${i.Code}`);
+        const qtyVal = parseFloat(q) || 0;
+        if(qtyVal !== 0) counted++;
+        if(isOOS(currentTab, i.Code)) oosCount++;
+        const cost = parseFloat(i.Cost) || 0;
+        totalCost += (cost * qtyVal);
+      });
 
       document.getElementById('stat-total').textContent = totalItems;
       document.getElementById('stat-counted').textContent = counted;
@@ -622,14 +599,16 @@
     }
 
     function updateBadges() {
-      ['Daily','CK','Weekly','Monthly'].forEach(tab => {
+      ['Daily','CK','Weekly','Monthly'].forEach(tabName => {
         let count = 0;
-        const items = masterData.db[tab] || [];
+        const items = combinedInventory.filter(i => {
+          return (i.Type || '').toString().trim().toLowerCase() === tabName.toLowerCase();
+        });
         items.forEach(i => {
-          const q = localStorage.getItem(`draft_${tab}_${i.Code}`);
+          const q = localStorage.getItem(`draft_${tabName}_${i.Code}`);
           if(q && parseFloat(q) !== 0) count++;
         });
-        const badge = document.getElementById(`badge-${tab}`);
+        const badge = document.getElementById(`badge-${tabName}`);
         if(badge) { badge.textContent = count; badge.style.display = count > 0 ? 'inline-block' : 'none'; }
       });
       const oosCount = Object.keys(getOOSItems()).length;
@@ -659,11 +638,11 @@
       const isOOSTab = currentTab === 'OOS';
 
       if(isMaster) {
-        thead.innerHTML = `<tr><th class="sticky-col sticky-col-ref">Ref</th><th class="sticky-col sticky-col-code">Code</th><th style="text-align:left">Item Name</th><th style="text-align:right">Arabic</th><th>WH Unit</th><th>Weight</th><th>Type</th><th>Cost</th><th class="admin-qty-col">Q1</th><th class="admin-qty-col">Q2</th><th class="admin-qty-col">Q3</th><th>Total</th></tr>`;
+        thead.innerHTML = `<tr><th class="sticky-col sticky-col-ref">Refranc</th><th class="sticky-col sticky-col-code">Code</th><th style="text-align:left">Item Name</th><th>WH Unit</th><th>Type</th><th>Cost</th><th class="admin-qty-col">Q1</th><th class="admin-qty-col">Q2</th><th class="admin-qty-col">Q3</th><th>Total QTY</th></tr>`;
       } else if(isOOSTab) {
-        thead.innerHTML = `<tr><th>Source</th><th>Refranc</th><th>Code</th><th style="text-align:left">Item Name</th><th style="text-align:right">Arabic</th><th>WH Unit</th><th>Weight</th><th>Type</th><th>Cost</th><th>Remove</th></tr>`;
+        thead.innerHTML = `<tr><th>Source</th><th>Refranc</th><th>Code</th><th style="text-align:left">Item Name</th><th>WH Unit</th><th>Type</th><th>Cost</th><th>Remove</th></tr>`;
       } else {
-        thead.innerHTML = `<tr><th class="sticky-col sticky-col-ref">Ref</th><th class="sticky-col sticky-col-code">Code</th><th class="sticky-col sticky-col-qty" style="background:rgba(99,102,241,.15)">QTY</th><th style="text-align:left">Item Name</th><th style="text-align:right">Arabic</th><th>WH Unit</th><th>Weight</th><th>Type</th><th>Cost</th><th>OOS</th></tr>`;
+        thead.innerHTML = `<tr><th class="sticky-col sticky-col-ref">Refranc</th><th class="sticky-col sticky-col-code">Code</th><th class="sticky-col sticky-col-qty">QTY</th><th class="sticky-col sticky-col-oos">OOS</th><th style="text-align:left">Item Name</th><th>WH Unit</th><th>Type</th><th>Cost</th></tr>`;
       }
 
       let items;
@@ -671,8 +650,12 @@
       else if(isMaster) {
         items = combinedInventory;
         const f = document.getElementById('filter-cycle').value;
-        if(f !== 'All') items = items.filter(i => (i.Cycle||i.Type) === f);
-      } else { items = masterData.db[currentTab] || []; }
+        if(f !== 'All') items = items.filter(i => (i.Type || '').toString().trim().toLowerCase() === f.toLowerCase());
+      } else { 
+        items = combinedInventory.filter(i => {
+          return (i.Type || '').toString().trim().toLowerCase() === currentTab.toLowerCase();
+        });
+      }
 
       tbody.innerHTML = '';
       if(items.length === 0) {
@@ -687,18 +670,22 @@
         const cost = parseFloat(item.Cost) || 0;
 
         if(isMaster) {
-          const q1 = localStorage.getItem(`draft_Master_${item.Code}_q1`) || '';
-          const q2 = localStorage.getItem(`draft_Master_${item.Code}_q2`) || '';
-          const q3 = localStorage.getItem(`draft_Master_${item.Code}_q3`) || '';
+          const q1raw = localStorage.getItem(`draft_Master_${item.Code}_q1`);
+          const q2raw = localStorage.getItem(`draft_Master_${item.Code}_q2`);
+          const q3raw = localStorage.getItem(`draft_Master_${item.Code}_q3`);
+          const q1 = q1raw !== null ? q1raw : '';
+          const q2 = q2raw !== null ? q2raw : '';
+          const q3 = q3raw !== null ? q3raw : '';
           const tot = (parseFloat(q1)||0) + (parseFloat(q2)||0) + (parseFloat(q3)||0);
-          tr.innerHTML = `<td class="sticky-col sticky-col-ref">${item.Refranc||'-'}</td><td class="sticky-col sticky-col-code">${item.Code}</td><td style="text-align:left">${item['Item Name']}</td><td style="text-align:right">${item.Arabic||''}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item['Unit Weight']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td><td class="admin-qty-col"><input type="number" class="qty-input mini" value="${q1}" oninput="saveM('${item.Code}','q1',this)"></td><td class="admin-qty-col"><input type="number" class="qty-input mini" value="${q2}" oninput="saveM('${item.Code}','q2',this)"></td><td class="admin-qty-col"><input type="number" class="qty-input mini" value="${q3}" oninput="saveM('${item.Code}','q3',this)"></td><td><input readonly class="qty-input total" id="tot_${item.Code}" value="${tot > 0 ? tot : ''}"></td>`;
+          const safeCode = item.Code.replace(/'/g, "\\'");
+          tr.innerHTML = `<td class="sticky-col sticky-col-ref" style="width:50px">${item.Refranc||item.ref||'-'}</td><td class="sticky-col sticky-col-code" style="width:90px">${item.Code}</td><td style="text-align:left;min-width:150px">${item['Item Name']}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td><td class="admin-qty-col"><input type="number" min="0" class="qty-input mini ${q1 ? 'has-value' : ''}" value="${q1}" oninput="saveM('${safeCode}','q1',this)"></td><td class="admin-qty-col"><input type="number" min="0" class="qty-input mini ${q2 ? 'has-value' : ''}" value="${q2}" oninput="saveM('${safeCode}','q2',this)"></td><td class="admin-qty-col"><input type="number" min="0" class="qty-input mini ${q3 ? 'has-value' : ''}" value="${q3}" oninput="saveM('${safeCode}','q3',this)"></td><td><input readonly class="qty-input total" id="tot_${item.Code}" value="${tot > 0 ? tot : ''}"></td>`;
         } else if(isOOSTab) {
-          tr.innerHTML = `<td><span style="background:var(--primary);color:white;padding:2px 8px;border-radius:6px;font-size:10px">${item._sourceTab}</span></td><td>${item.Refranc||'-'}</td><td style="font-family:monospace;color:var(--primary-light);font-weight:700">${item.Code}</td><td style="text-align:left">${item['Item Name']}</td><td style="text-align:right">${item.Arabic||''}</td><td>${item['WH Unit']||''}</td><td>${item['Unit Weight']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td><td><button onclick="removeOOS('${item._sourceTab}','${item.Code}')" style="background:var(--secondary);color:white;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px"><i class="fas fa-undo"></i></button></td>`;
+          tr.innerHTML = `<td><span style="background:var(--primary);color:white;padding:2px 8px;border-radius:6px;font-size:10px">${item._sourceTab}</span></td><td>${item.Refranc||item.ref||'-'}</td><td style="font-family:monospace;color:var(--primary-light);font-weight:700">${item.Code}</td><td style="text-align:left">${item['Item Name']}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td><td><button onclick="removeOOS('${item._sourceTab}','${item.Code}')" style="background:var(--secondary);color:white;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px"><i class="fas fa-undo"></i></button></td>`;
         } else {
           const val = localStorage.getItem(`draft_${currentTab}_${item.Code}`) || '';
           const itemOOS = isOOS(currentTab, item.Code);
           if(itemOOS) tr.classList.add('oos-row');
-          tr.innerHTML = `<td class="sticky-col sticky-col-ref">${item.Refranc||'-'}</td><td class="sticky-col sticky-col-code">${item.Code}</td><td class="sticky-col sticky-col-qty"><input type="number" class="qty-input ${val ? 'has-value' : ''}" value="${val}" oninput="saveD('${item.Code}',this)" ${itemOOS ? 'disabled' : ''}></td><td style="text-align:left">${item['Item Name']}</td><td style="text-align:right">${item.Arabic||''}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item['Unit Weight']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td><td class="oos-cell"><input type="checkbox" class="oos-toggle" ${itemOOS ? 'checked' : ''} onchange="toggleOOS('${currentTab}','${item.Code}',this.checked)"></td>`;
+          tr.innerHTML = `<td class="sticky-col sticky-col-ref" style="width:50px">${item.Refranc||item.ref||'-'}</td><td class="sticky-col sticky-col-code" style="width:90px">${item.Code}</td><td class="sticky-col sticky-col-qty" style="width:65px"><input type="number" min="0" class="qty-input ${val ? 'has-value' : ''}" value="${val}" oninput="saveD('${item.Code}',this)" ${itemOOS ? 'disabled' : ''}></td><td class="sticky-col sticky-col-oos" style="width:45px"><input type="checkbox" class="oos-toggle" ${itemOOS ? 'checked' : ''} onchange="toggleOOS('${currentTab}','${item.Code}',this.checked)"></td><td style="text-align:left;min-width:150px">${item['Item Name']}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td>`;
         }
         tbody.appendChild(tr);
       });
@@ -707,17 +694,28 @@
     }
 
     function saveD(code, el) {
+      if(parseFloat(el.value) < 0) el.value = 0;
       localStorage.setItem(`draft_${currentTab}_${code}`, el.value);
       el.classList.toggle('has-value', !!el.value);
       flashSave(); updateStats(); updateBadges();
     }
     function saveM(code, type, el) {
-      localStorage.setItem(`draft_Master_${code}_${type}`, el.value);
+      if(parseFloat(el.value) < 0) el.value = 0;
+      const val = el.value.trim();
+      if(val === '' || val === null) {
+        localStorage.removeItem(`draft_Master_${code}_${type}`);
+      } else {
+        localStorage.setItem(`draft_Master_${code}_${type}`, val);
+      }
+      el.classList.toggle('has-value', val !== '');
       const q1 = parseFloat(localStorage.getItem(`draft_Master_${code}_q1`))||0;
       const q2 = parseFloat(localStorage.getItem(`draft_Master_${code}_q2`))||0;
       const q3 = parseFloat(localStorage.getItem(`draft_Master_${code}_q3`))||0;
-      document.getElementById(`tot_${code}`).value = (q1+q2+q3) > 0 ? (q1+q2+q3) : '';
+      const tot = q1+q2+q3;
+      const totEl = document.getElementById(`tot_${code}`);
+      if(totEl) totEl.value = tot > 0 ? tot : '';
       flashSave();
+      updateStats();
     }
     function toggleOOS(tab, code, checked) {
       setOOS(tab, code, checked);
@@ -736,18 +734,34 @@
       let uploadItems = [];
       if(isMaster) {
         uploadItems = combinedInventory.map(i => {
-          const q1 = localStorage.getItem(`draft_Master_${i.Code}_q1`);
-          const q2 = localStorage.getItem(`draft_Master_${i.Code}_q2`);
-          const q3 = localStorage.getItem(`draft_Master_${i.Code}_q3`);
-          const total = (parseFloat(q1)||0)+(parseFloat(q2)||0)+(parseFloat(q3)||0);
-          return {code:i.Code,name:i['Item Name'],arabic:i.Arabic,unit:i['WH Unit'],ref:i.Refranc,weight:i['Unit Weight'],type:i.Type,cycle:i.Cycle,cost:i.Cost,qty1:q1,qty2:q2,qty3:q3,total};
-        }).filter(i => i.total > 0);
+          const q1 = parseFloat(localStorage.getItem(`draft_Master_${i.Code}_q1`))||0;
+          const q2 = parseFloat(localStorage.getItem(`draft_Master_${i.Code}_q2`))||0;
+          const q3 = parseFloat(localStorage.getItem(`draft_Master_${i.Code}_q3`))||0;
+          const total = q1 + q2 + q3;
+          return {
+            Code: i.Code,
+            'Item Name': i['Item Name'],
+            'WH Unit': i['WH Unit'] || '',
+            Refranc: i.Refranc || i.ref || '',
+            Type: i.Type || '',
+            Cost: parseFloat(i.Cost)||0,
+            QTY: total
+          };
+        }).filter(i => i.QTY > 0);
       } else {
-        const raw = masterData.db[currentTab] || [];
-        uploadItems = raw.map(i => {
+        uploadItems = combinedInventory.filter(i => (i.Type || '').toString().trim().toLowerCase() === currentTab.toLowerCase()).map(i => {
           const q = localStorage.getItem(`draft_${currentTab}_${i.Code}`);
-          return {code:i.Code,name:i['Item Name'],arabic:i.Arabic,unit:i['WH Unit'],ref:i.Refranc,weight:i['Unit Weight'],type:i.Type,cost:i.Cost,qty:q};
-        }).filter(i => i.qty && parseFloat(i.qty) !== 0);
+          const qVal = parseFloat(q)||0;
+          return {
+            Code: i.Code,
+            'Item Name': i['Item Name'],
+            'WH Unit': i['WH Unit'] || '',
+            Refranc: i.Refranc || i.ref || '',
+            Type: i.Type || '',
+            Cost: parseFloat(i.Cost)||0,
+            QTY: qVal
+          };
+        }).filter(i => i.QTY !== 0);
       }
       if(!uploadItems.length) return showAlert('No data to upload.','warning','No Data');
 
@@ -768,7 +782,7 @@
           }
 
           if(isMaster) combinedInventory.forEach(item => ['q1','q2','q3'].forEach(s => localStorage.removeItem(`draft_Master_${item.Code}_${s}`)));
-          else (masterData.db[currentTab]||[]).forEach(item => localStorage.removeItem(`draft_${currentTab}_${item.Code}`));
+          else combinedInventory.filter(i => i.Type === currentTab).forEach(item => localStorage.removeItem(`draft_${currentTab}_${item.Code}`));
           renderTable();
         } else showAlert(res.msg,'error');
       }).catch(err => { document.getElementById('loader-overlay').style.display='none'; console.error(err); showAlert('Network error.','error'); });
@@ -776,15 +790,13 @@
 
     function sendOOSAutoReport(oosItems, section) {
       const normalizedItems = oosItems.map(item => ({
-        ref: item.Refranc || item.ref || '',
-        code: item.Code || item.code || '',
-        name: item['Item Name'] || item.name || '',
-        arabic: item.Arabic || item.arabic || '',
-        unit: item['WH Unit'] || item.unit || '',
-        weight: item['Unit Weight'] || item.weight || '',
-        type: item.Type || item.type || '',
-        cost: item.Cost || item.cost || 0,
-        qty: 0
+        Refranc: item.Refranc || item.ref || '',
+        Code: item.Code || item.code || '',
+        'Item Name': item['Item Name'] || item.name || '',
+        'WH Unit': item['WH Unit'] || item.unit || '',
+        Type: item.Type || item.type || '',
+        Cost: item.Cost || item.cost || 0,
+        QTY: 0
       }));
 
       fetch(SCRIPT_URL, {
@@ -804,7 +816,7 @@
       if(await showConfirm(`Clear ALL inputs for ${currentTab}?`,'Clear All')) {
         const isMaster = currentTab === 'Monthly Inventory';
         if(isMaster) combinedInventory.forEach(item => ['q1','q2','q3'].forEach(s => localStorage.removeItem(`draft_Master_${item.Code}_${s}`)));
-        else (masterData.db[currentTab]||[]).forEach(item => localStorage.removeItem(`draft_${currentTab}_${item.Code}`));
+        else combinedInventory.filter(i => i.Type === currentTab).forEach(item => localStorage.removeItem(`draft_${currentTab}_${item.Code}`));
         renderTable();
         showAlert(`All inputs for ${currentTab} cleared!`,'success');
       }
@@ -844,21 +856,21 @@
               
               let secTotal = 0;
               secData.forEach(r => {
-                const cost = parseFloat(r.Cost || r.cost || 0);
-                const qty = parseFloat(r.Qty || r.qty || r.QTY || 0);
+                const cost = parseFloat(r.cost || r.Cost || 0);
+                const qty = parseFloat(r.qty || r.QTY || 0);
                 const rowTotal = cost * qty;
                 secTotal += rowTotal;
                 grandTotal += rowTotal;
-                const ref = r.Refranc || r.ref || '-';
-                const name = r['Item Name'] || r.name || '';
-                const weight = r['Unit Weight'] || r.weight || '';
-                const unit = r['WH Unit'] || r.unit || '';
+                const ref = r.ref || r.Refranc || '-';
+                const name = r.name || r['Item Name'] || '';
+                const unit = r.unit || r['WH Unit'] || '';
+                const type = r.type || r.Type || '';
                 
-                tbody.innerHTML += `<tr><td>${ref}</td><td>${r.code || r.Code}</td><td style="text-align:left">${name}</td><td>${unit}</td><td>${weight}</td><td>${r.type||r.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost.toFixed(2)}</td><td>${qty}</td><td style="color:var(--secondary);font-weight:700">${rowTotal.toFixed(2)}</td><td>${r.user||r.User}</td><td>${(r.date||r.Date||'').split('T')[0]}</td></tr>`;
+                tbody.innerHTML += `<tr><td>${ref}</td><td>${r.code || r.Code}</td><td style="text-align:left">${name}</td><td>${unit}</td><td>${type}</td><td style="color:#f472b6;font-weight:600">${cost.toFixed(2)}</td><td>${qty}</td><td style="color:var(--secondary);font-weight:700">${rowTotal.toFixed(2)}</td><td>${r.user || r.User}</td><td>${(r.date || r.Date || '').split('T')[0]}</td></tr>`;
               });
               
               // Section Subtotal with Black Background and Item Count
-              tbody.innerHTML += `<tr style="background:#0f172a;color:#fff"><td colspan="8" style="text-align:right;font-weight:700;font-size:12px;padding:8px 12px">Subtotal ${secName} (${secData.length} Items):</td><td colspan="3" style="font-weight:800;color:#10b981;padding:8px 12px">EGP ${secTotal.toLocaleString('en',{minimumFractionDigits:2})}</td></tr>`;
+              tbody.innerHTML += `<tr style="background:#0f172a;color:#fff"><td colspan="7" style="text-align:right;font-weight:700;font-size:12px;padding:8px 12px">Subtotal ${secName} (${secData.length} Items):</td><td colspan="3" style="font-weight:800;color:#10b981;padding:8px 12px">EGP ${secTotal.toLocaleString('en',{minimumFractionDigits:2})}</td></tr>`;
             }
           });
           
@@ -869,11 +881,11 @@
 
     function exportReportToExcel() {
       if(!currentReportData.length) return showAlert('Generate a report first.','warning');
-      let csv = "data:text/csv;charset=utf-8,Section,Refranc,Code,Item Name,WH Unit,Unit Weight,Type,Cost,QTY,Total Cost,User,Date\n";
+      let csv = "data:text/csv;charset=utf-8,Section,Refranc,Code,Item Name,WH Unit,Type,Cost,QTY,Total Cost,User,Date\n";
       currentReportData.forEach(r => { 
-        const c = parseFloat(r.Cost||r.cost||0);
-        const q = parseFloat(r.Qty||r.qty||r.QTY||0);
-        csv += `${r.section},${r.Refranc||r.ref||''},${r.Code||r.code},"${r['Item Name']||r.name}",${r['WH Unit']||r.unit||''},${r['Unit Weight']||r.weight||''},${r.Type||r.type||''},${c},${q},${(c*q).toFixed(2)},${r.User||r.user},${r.Date||r.date}\n`; 
+        const c = parseFloat(r.cost || r.Cost || 0);
+        const q = parseFloat(r.qty || r.QTY || 0);
+        csv += `${r.section},${r.ref || r.Refranc || ''},${r.code || r.Code},"${r.name || r['Item Name'] || ''}",${r.unit || r['WH Unit'] || ''},${r.type || r.Type || ''},${c},${q},${(c*q).toFixed(2)},${r.user || r.User},${r.date || r.Date}\n`; 
       });
       const link = document.createElement("a"); link.href = encodeURI(csv);
       link.download = `EZEM_Report_${new Date().toISOString().split('T')[0]}.csv`;
@@ -939,37 +951,34 @@
           
           let secTotal = 0;
           secItems.forEach(r => {
-            const c = parseFloat(r.Cost || r.cost || 0); 
-            const q = parseFloat(r.Qty || r.qty || r.QTY || 0);
+            const c = parseFloat(r.cost || r.Cost || 0); 
+            const q = parseFloat(r.qty || r.QTY || 0);
             const rowTotal = c * q;
             secTotal += rowTotal;
             grandTotal += rowTotal;
             rows.push([
-              r.Refranc || r.ref || '-', 
-              r.Code || r.code, 
-              r['Item Name'] || r.name, 
-              r['WH Unit'] || r.unit || '', 
-              r['Unit Weight'] || r.weight || '', 
-              r.Type || r.type || '', 
+              r.ref || r.Refranc || '-', 
+              r.code || r.Code, 
+              r.name || r['Item Name'], 
+              r.unit || r['WH Unit'] || '', 
+              r.type || r.Type || '', 
               c.toFixed(2), 
               q, 
               rowTotal.toFixed(2),
-              r.User || r.user, 
-              (r.Date || r.date || '').split('T')[0]
+              r.user || r.User, 
+              (r.date || r.Date || '').split('T')[0]
             ]);
           });
           // Subtotal row per section with Dark background in PDF
-          rows.push([{content: `Subtotal ${sec} (${secItems.length} Items): EGP ${secTotal.toLocaleString('en',{minimumFractionDigits:2})}`, colSpan: 11, styles: {halign: 'right', fontStyle: 'bold', fillColor: [30, 41, 59], textColor: [255, 255, 255]}}]);
+          rows.push([{content: `Subtotal ${sec} (${secItems.length} Items): EGP ${secTotal.toLocaleString('en',{minimumFractionDigits:2})}`, colSpan: 10, styles: {halign: 'right', fontStyle: 'bold', fillColor: [30, 41, 59], textColor: [255, 255, 255]}}]);
         }
       });
 
       doc.autoTable({
         startY: 33,
-        head:[['Refranc','Code','Item Name','WH Unit','Unit Weight','Type','Cost','QTY','Total Cost','User','Date']],
+        head:[['Refranc','Code','Item Name','WH Unit','Type','Cost','QTY','Total Cost','User','Date']],
         body:rows,
-        foot:[['','','','','','','','GRAND TOTAL:',`EGP ${grandTotal.toLocaleString('en',{minimumFractionDigits:2})}`,'','']],
-        body:rows,
-        foot:[['','','','','','','','Total Cost:',`EGP ${totalCost.toLocaleString('en',{minimumFractionDigits:2})}`,'']],
+        foot:[['','','','','','','','GRAND TOTAL:',`EGP ${grandTotal.toLocaleString('en',{minimumFractionDigits:2})}`,'']],
         theme:'grid',
         tableWidth:'auto',
         headStyles:{fillColor:[99,102,241], textColor:255, halign:'center', fontStyle:'bold', fontSize:9},
@@ -1030,11 +1039,11 @@
       const isOOSTab = currentTab === 'OOS';
       const sheetName = currentTab;
 
-      let items, rows = [], totalCost = 0;
+      let items = [], rows = [], totalCost = 0;
       if(isOOSTab) {
         items = getAllOOSProducts();
         items.forEach(i => {
-          rows.push([i.Refranc||'-', i.Code, i['Item Name'], i.Arabic||'', i['WH Unit']||'', i['Unit Weight']||'', i.Type||'', (parseFloat(i.Cost)||0).toFixed(2), '0']);
+          rows.push([i.Refranc||i.ref||'-', i.Code, i['Item Name'], i['WH Unit']||'', i.Type||'', (parseFloat(i.Cost)||0).toFixed(2), '0']);
         });
         totalCost = 0;
       } else if(isMaster) {
@@ -1045,18 +1054,18 @@
           const c=parseFloat(i.Cost)||0; 
           if(tot>0) {
             totalCost += (c * tot);
-            rows.push([i.Refranc||'-',i.Code,i['Item Name'],i.Arabic||'',i['WH Unit']||'',i['Unit Weight']||'',i.Type||'',c.toFixed(2),q1||'-',q2||'-',q3||'-',tot]);
+            rows.push([i.Refranc||i.ref||'-',i.Code,i['Item Name'],i['WH Unit']||'',i.Type||'',c.toFixed(2),q1||'-',q2||'-',q3||'-',tot]);
           }
         });
       } else {
-        items = masterData.db[currentTab] || [];
-        items.forEach(i => {
+        const targetItems = combinedInventory.filter(i => (i.Type || '').toString().trim().toLowerCase() === currentTab.toLowerCase());
+        targetItems.forEach(i => {
           const q = localStorage.getItem(`draft_${currentTab}_${i.Code}`);
           const qtyVal = parseFloat(q) || 0;
           const c = parseFloat(i.Cost)||0; 
           if(qtyVal !== 0) {
             totalCost += (c * qtyVal);
-            rows.push([i.Refranc||'-',i.Code,i['Item Name'],i.Arabic||'',i['WH Unit']||'',i['Unit Weight']||'',i.Type||'',c.toFixed(2),q]);
+            rows.push([i.Refranc||i.ref||'-', i.Code, i['Item Name'], i['WH Unit']||'', i.Type||'', c.toFixed(2), qtyVal]);
           }
         });
       }
@@ -1065,13 +1074,13 @@
 
       addPDFHeader(doc, sheetName);
 
-      let head, foot;
+      let head;
       if(isMaster) {
-        head = [['Refranc','Code','Item Name','WH Unit','Unit Weight','Type','Cost','Q1','Q2','Q3','Total','Date','User']];
+        head = [['Refranc','Code','Item Name','WH Unit','Type','Cost','Q1','Q2','Q3','Total QTY']];
       } else if(isOOSTab) {
-        head = [['Refranc','Code','Item Name','WH Unit','Unit Weight','Type','Cost']];
+        head = [['Refranc','Code','Item Name','WH Unit','Type','Cost','QTY']];
       } else {
-        head = [['Refranc','Code','Item Name','WH Unit','Unit Weight','Type','Cost','QTY','Total Cost','Date','User']];
+        head = [['Refranc','Code','Item Name','WH Unit','Type','Cost','QTY']];
       }
       foot = [Array(head[0].length-2).fill('').concat(['Total Cost:', `EGP ${totalCost.toLocaleString('en',{minimumFractionDigits:2})}`])];
 
@@ -1190,13 +1199,13 @@
       let rows = [], totalCost = 0;
       oosItems.forEach(i => {
         // OOS implies qty 0 for current count, so Total Cost for these is 0
-        rows.push([i.Refranc||'-', i.Code, i['Item Name'], i['WH Unit']||'', i['Unit Weight']||'', i.Type||'', (parseFloat(i.Cost)||0).toFixed(2), '0', '0.00', currentUser, new Date().toISOString().split('T')[0]]);
+        rows.push([i.Refranc||i.ref||'-', i.Code||i.code, i['Item Name']||i.name, i['WH Unit']||i.unit||'', i.Type||i.type||'', (parseFloat(i.Cost||i.cost)||0).toFixed(2), '0', '0.00', currentUser, new Date().toISOString().split('T')[0]]);
       });
       totalCost = 0;
 
       addPDFHeader(doc, sheetName);
 
-      const head = [['Refranc','Code','Item Name','WH Unit','Unit Weight','Type','Cost','QTY','Total Cost','User','Date']];
+      const head = [['Refranc','Code','Item Name','WH Unit','Type','Cost','QTY','Total Cost','User','Date']];
       const foot = [Array(head[0].length-2).fill('').concat(['Total Cost:', `EGP ${totalCost.toLocaleString('en',{minimumFractionDigits:2})}`])];
 
       doc.autoTable({
