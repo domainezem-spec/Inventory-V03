@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>The Drive 2 | Inventory System V4</title>
+  <title>EL-Hamd-GK | Inventory System V4</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -206,8 +206,8 @@
       <div class="login-box-side">
         <div class="login-box">
           <img src="https://lh3.googleusercontent.com/d/1gwXYV5GVOzHgkI3QpFY4Up5mavYFBVcl" alt="EZEM Logo" style="width:70px;margin-bottom:12px;border-radius:16px;box-shadow:var(--shadow)">
-          <div class="login-title">LOGIN SYSTEM</div>
-          <div class="login-subtitle">THE DRIVE 2 | INVENTORY V4</div>
+          <div class="login-title">LOGIN user /div>
+          <div class="login-subtitle">EL-Hamd-GK | INVENTORY V4</div>
           <select id="user-select" class="login-input" autocomplete="off"><option value="" disabled selected>Select Identity</option></select>
           <input type="password" id="user-pass" class="login-input" placeholder="Enter Password" autocomplete="new-password">
           <button class="btn-login" onclick="attemptLogin()">ACCESS DASHBOARD</button>
@@ -221,7 +221,7 @@
     <div class="brand">
       <img src="https://lh3.googleusercontent.com/d/1gwXYV5GVOzHgkI3QpFY4Up5mavYFBVcl" alt="Logo" style="width:36px;height:auto;border-radius:10px">
       <div style="display:flex;flex-direction:column;line-height:1.2">
-        <span class="brand-name">THE DRIVE 2</span>
+        <span class="brand-name">EL-Hamd-GK</span>
         <span class="brand-sub">INVENTORY SYSTEM V4</span>
       </div>
     </div>
@@ -908,7 +908,7 @@
       doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(200);
       doc.text(`Sheet: ${sheetName}`, 15, 17);
       doc.text(`User: ${currentUser}`, 15, 23);
-      doc.text(`System: The Drive 2`, pw/2, 17, {align:'center'});
+      doc.text(`System: EL-Hamd-GK`, pw/2, 17, {align:'center'});
       doc.text(`Date: ${dateStr}`, pw - 15, 17, {align:'right'});
       doc.text(`Time: ${timeStr}`, pw - 15, 23, {align:'right'});
       doc.setTextColor(0);
