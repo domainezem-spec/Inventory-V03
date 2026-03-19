@@ -92,8 +92,8 @@
     .stat-value{color:var(--text);font-weight:700}
 
     /* Search */
-    .search-bar{padding:6px 20px;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center}
-    .search-input{flex:1;padding:7px 14px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;outline:none;transition:.3s}
+    .search-bar{padding:6px 20px;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .search-input{flex:1;min-width:150px;padding:7px 14px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;outline:none;transition:.3s}
     .inventory-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:10px;padding:12px 20px}
     .product-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;transition:.3s;box-shadow:0 2px 4px rgba(0,0,0,0.02)}
     .product-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
@@ -110,7 +110,7 @@
     .filter-select{padding:10px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:12px;outline:none;min-width:140px}
 
     /* Controls */
-    #controls-area{background:var(--bg-card);padding:8px 20px;display:none;border-bottom:1px solid var(--border);position:sticky;top:120px;z-index:800}
+    #controls-area{background:var(--bg-card);padding:8px 20px;display:none;border-bottom:1px solid var(--border);position:sticky;top:70px;z-index:800}
 
     /* Table */
     .table-wrapper{margin:12px;background:var(--bg-card);border-radius:16px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow)}
@@ -170,6 +170,8 @@
 
     /* Report */
     .report-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:var(--bg-elevated);padding:15px;border-radius:12px;margin-bottom:15px}
+    .user-mgmt-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media(max-width:768px){ .report-controls, .user-mgmt-grid {grid-template-columns:1fr;} }
     .col-full{grid-column:1/-1}
     .control-group label{font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:4px;display:block}
     .control-input{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:10px;transition:.2s;font-size:13px;height:40px;background:var(--bg-card);color:var(--text)}
@@ -206,7 +208,7 @@
       <div class="login-box-side">
         <div class="login-box">
           <img src="https://lh3.googleusercontent.com/d/1gwXYV5GVOzHgkI3QpFY4Up5mavYFBVcl" alt="EZEM Logo" style="width:70px;margin-bottom:12px;border-radius:16px;box-shadow:var(--shadow)">
-          <div class="login-title">LOGIN SYSTEM</div>
+          <div class="login-title">LOGIN USER</div>
           <div class="login-subtitle">EL-Hamd-GK | INVENTORY V4</div>
           <select id="user-select" class="login-input" autocomplete="off"><option value="" disabled selected>Select Identity</option></select>
           <input type="password" id="user-pass" class="login-input" placeholder="Enter Password" autocomplete="new-password">
@@ -325,7 +327,7 @@
         <button onclick="document.getElementById('user-mgmt-modal').style.display='none'" style="border:none;background:var(--bg-elevated);color:var(--text);width:32px;height:32px;border-radius:8px;cursor:pointer">&times;</button>
       </div>
       <div style="background:var(--bg-elevated);padding:15px;border-radius:12px;margin-bottom:15px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="user-mgmt-grid">
           <input id="new-user-name" class="control-input" placeholder="User Name">
           <input id="new-user-pass" class="control-input" placeholder="Password">
           <select id="new-user-role" class="control-input">
