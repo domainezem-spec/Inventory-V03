@@ -244,6 +244,7 @@
       <button class="tab-btn" onclick="switchTab('Weekly')">Weekly <span class="tab-badge" id="badge-Weekly" style="display:none">0</span></button>
       <button class="tab-btn" onclick="switchTab('Monthly')">Monthly <span class="tab-badge" id="badge-Monthly" style="display:none">0</span></button>
       <button class="tab-btn oos-tab" id="btn-oos" onclick="switchTab('OOS')"><i class="fas fa-ban"></i> OOS <span class="tab-badge" id="badge-OOS" style="display:none">0</span></button>
+      <button class="tab-btn" id="btn-orders" onclick="switchTab('Orders')" style="border:1px solid rgba(245,158,11,0.3)"><i class="fas fa-shopping-cart" style="color:var(--warning)"></i> Orders</button>
       <button class="tab-btn admin-tab" id="btn-master" onclick="switchTab('Monthly Inventory')"><i class="fas fa-database"></i> M. Inventory</button>
     </nav>
   </div>
@@ -261,8 +262,11 @@
     <select class="filter-select" id="type-filter" onchange="filterTable()"><option value="All">All Types</option></select>
   </div>
 
-  <div id="controls-area">
+  <div id="controls-area" style="display:flex;align-items:center;gap:15px">
     <select id="filter-cycle" class="filter-select" onchange="renderTable()"><option value="All">All Cycles</option></select>
+    <label id="lbl-consumable" style="display:none;color:var(--text);font-size:12px;font-weight:700;align-items:center;cursor:pointer">
+      <input type="checkbox" id="chk-consumable" onchange="renderTable()" style="margin-right:6px"> Consumable Only
+    </label>
   </div>
 
   <div class="table-wrapper">
@@ -277,6 +281,7 @@
   <div class="footer-actions">
     <button class="btn-action btn-tg" onclick="openTgModal()"><i class="fab fa-telegram-plane"></i></button>
     <button class="btn-action btn-report" id="btn-admin-report" onclick="openReportView()"><i class="fas fa-chart-pie"></i> Reports</button>
+    <button class="btn-action btn-report" id="btn-export-orders" style="display:none;background:var(--warning);color:#000;border:none;flex:1" onclick="exportOrdersPDF()"><i class="fas fa-file-invoice"></i> Orders</button>
     <button class="btn-action" id="btn-admin-users" style="display:none;background:var(--bg-elevated);color:var(--text);border:1px solid var(--border);flex:1" onclick="openUserMgmt()"><i class="fas fa-users"></i> Users</button>
     <button class="btn-action btn-upload" onclick="confirmUpload()"><span>UPLOAD DATA</span> <i class="fas fa-cloud-upload-alt"></i></button>
     <button class="btn-action btn-clear" onclick="clearAllInputs()" title="Clear"><i class="fas fa-eraser"></i></button>
@@ -298,6 +303,8 @@
             <option value="All">All Sections</option><option value="Daily">Daily</option><option value="CK">CK</option>
             <option value="Weekly">Weekly</option><option value="Monthly">Monthly</option>
             <option value="Monthly Inventory">Monthly Inventory (Admin)</option>
+            <option value="OOS">OOS (Out of Stock History)</option>
+            <option value="Orders">Orders (Purchase History)</option>
           </select>
         </div>
         <button class="btn-login col-full" style="margin-top:0" onclick="fetchReport()">Generate Report</button>
@@ -556,8 +563,17 @@
 
       const isMaster = (name === 'Monthly Inventory');
       const isOOS = (name === 'OOS');
-      document.getElementById('controls-area').style.display = isMaster ? 'block' : 'none';
+      const isOrders = (name === 'Orders');
+      document.getElementById('controls-area').style.display = (isMaster || isOrders) ? 'flex' : 'none';
+      if(document.getElementById('lbl-consumable')) document.getElementById('lbl-consumable').style.display = isOrders ? 'flex' : 'none';
+      if(document.getElementById('filter-cycle')) document.getElementById('filter-cycle').style.display = isMaster ? 'block' : 'none';
+      
       document.getElementById('search-bar').style.display = isOOS ? 'none' : 'flex';
+      
+      // Footer conditional logic
+      if(document.getElementById('btn-export-orders')) document.getElementById('btn-export-orders').style.display = isOrders ? 'flex' : 'none';
+      if(document.getElementById('btn-admin-report')) document.getElementById('btn-admin-report').style.display = (currentUser && masterData.users.find(u => u.name === currentUser)?.role === 'Admin' && !isOrders) ? 'flex' : 'none';
+      
       document.getElementById('search-input').value = '';
       document.getElementById('type-filter').value = 'All';
       if(isMaster) populateCycleFilter(); else renderTable();
@@ -576,19 +592,32 @@
     function updateStats() {
       const isMaster = currentTab === 'Monthly Inventory';
       const isOOSTab = currentTab === 'OOS';
-      let items = isOOSTab ? getAllOOSProducts() : (isMaster ? combinedInventory : combinedInventory.filter(i => {
+      const isOrders = currentTab === 'Orders';
+      let items = isOOSTab ? getAllOOSProducts() : ((isMaster || isOrders) ? combinedInventory : combinedInventory.filter(i => {
         return (i.Type || '').toString().trim().toLowerCase() === currentTab.toLowerCase();
       }));
+      if(isOrders && document.getElementById('chk-consumable') && document.getElementById('chk-consumable').checked) {
+        items = items.filter(i => i.Consumable === true || localStorage.getItem(`orders_cons_${i.Code}`) === 'true');
+      }
       const totalItems = items.length;
       let counted = 0, totalCost = 0, oosCount = 0;
 
       items.forEach(i => {
-        const q = localStorage.getItem(`draft_${currentTab}_${i.Code}`);
-        const qtyVal = parseFloat(q) || 0;
-        if(qtyVal !== 0) counted++;
-        if(isOOS(currentTab, i.Code)) oosCount++;
-        const cost = parseFloat(i.Cost) || 0;
-        totalCost += (cost * qtyVal);
+        if(isOrders) {
+           const q = localStorage.getItem(`orders_adj_${i.Code}`);
+           if(parseFloat(q) > 0) counted++;
+           const consumption = parseFloat(i.Consumption || localStorage.getItem(`orders_consumption_${i.Code}`))||0;
+           const minOrdering = consumption > 0 ? (consumption * 1.2) : 0;
+           const avail = parseFloat(i.QTY || localStorage.getItem(`draft_${i.Type}_${i.Code}`))||0;
+           if(minOrdering > 0 && avail < minOrdering) oosCount++; // Warning count in Orders
+        } else {
+           const q = localStorage.getItem(`draft_${currentTab}_${i.Code}`);
+           const qtyVal = parseFloat(q) || 0;
+           if(qtyVal !== 0) counted++;
+           if(isOOS(currentTab, i.Code)) oosCount++;
+           const cost = parseFloat(i.Cost) || 0;
+           totalCost += (cost * qtyVal);
+        }
       });
 
       document.getElementById('stat-total').textContent = totalItems;
@@ -635,21 +664,29 @@
       const thead = document.getElementById('table-head');
       const isMaster = currentTab === 'Monthly Inventory';
       const isOOSTab = currentTab === 'OOS';
+      const isOrders = currentTab === 'Orders';
 
       if(isMaster) {
         thead.innerHTML = `<tr><th class="sticky-col sticky-col-qty">QTY</th><th style="text-align:left">Item Name</th><th>Refranc</th><th>Code</th><th>WH Unit</th><th>Type</th><th>Cost</th><th class="admin-qty-col">Q1</th><th class="admin-qty-col">Q2</th><th class="admin-qty-col">Q3</th></tr>`;
       } else if(isOOSTab) {
         thead.innerHTML = `<tr><th>Source</th><th>Refranc</th><th>Code</th><th style="text-align:left">Item Name</th><th>WH Unit</th><th>Type</th><th>Cost</th><th>Remove</th></tr>`;
+      } else if(isOrders) {
+        thead.innerHTML = `<tr><th style="width:40px">Cons.</th><th style="text-align:left">Item Name</th><th>Code</th><th style="color:var(--primary)">Stock on Hand</th><th style="width:80px">Consumption</th><th style="width:80px">Min Ordering<br><span style="font-size:9px;color:var(--text-muted)">(Cons.+20%)</span></th><th style="color:var(--warning)">Suggest Ordering</th><th class="sticky-col sticky-col-qty" style="width:80px">Actual Ordering</th></tr>`;
       } else {
         thead.innerHTML = `<tr><th class="sticky-col sticky-col-qty">QTY</th><th style="text-align:left">Item Name</th><th>Refranc</th><th>Code</th><th>OOS</th><th>WH Unit</th><th>Type</th><th>Cost</th></tr>`;
       }
 
       let items;
       if(isOOSTab) { items = getAllOOSProducts(); }
-      else if(isMaster) {
+      else if(isMaster || isOrders) {
         items = combinedInventory;
-        const f = document.getElementById('filter-cycle').value;
-        if(f !== 'All') items = items.filter(i => (i.Type || '').toString().trim().toLowerCase() === f.toLowerCase());
+        if(isMaster) {
+          const f = document.getElementById('filter-cycle').value;
+          if(f !== 'All') items = items.filter(i => (i.Type || '').toString().trim().toLowerCase() === f.toLowerCase());
+        }
+        if(isOrders && document.getElementById('chk-consumable') && document.getElementById('chk-consumable').checked) {
+          items = items.filter(i => i.Consumable === true || localStorage.getItem(`orders_cons_${i.Code}`) === 'true');
+        }
       } else { 
         items = combinedInventory.filter(i => {
           return (i.Type || '').toString().trim().toLowerCase() === currentTab.toLowerCase();
@@ -680,6 +717,31 @@
           tr.innerHTML = `<td class="sticky-col sticky-col-qty" style="width:65px"><input readonly class="qty-input total" id="tot_${item.Code}" value="${tot > 0 ? tot : ''}"></td><td style="text-align:left;min-width:150px">${item['Item Name']}</td><td>${item.Refranc||item.ref||'-'}</td><td style="width:90px">${item.Code}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td><td class="admin-qty-col"><input type="number" min="0" class="qty-input mini ${q1 ? 'has-value' : ''}" value="${q1}" oninput="saveM('${safeCode}','q1',this)"></td><td class="admin-qty-col"><input type="number" min="0" class="qty-input mini ${q2 ? 'has-value' : ''}" value="${q2}" oninput="saveM('${safeCode}','q2',this)"></td><td class="admin-qty-col"><input type="number" min="0" class="qty-input mini ${q3 ? 'has-value' : ''}" value="${q3}" oninput="saveM('${safeCode}','q3',this)"></td>`;
         } else if(isOOSTab) {
           tr.innerHTML = `<td><span style="background:var(--primary);color:white;padding:2px 8px;border-radius:6px;font-size:10px">${item._sourceTab}</span></td><td>${item.Refranc||item.ref||'-'}</td><td style="font-family:monospace;color:var(--primary-light);font-weight:700">${item.Code}</td><td style="text-align:left">${item['Item Name']}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td><td><button onclick="removeOOS('${item._sourceTab}','${item.Code}')" style="background:var(--secondary);color:white;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px"><i class="fas fa-undo"></i></button></td>`;
+        } else if(isOrders) {
+          const safeCode = item.Code.replace(/'/g, "\\'");
+          const isCons = item.Consumable === true || localStorage.getItem(`orders_cons_${item.Code}`) === 'true';
+          const consumptionRaw = item.Consumption || localStorage.getItem(`orders_consumption_${item.Code}`);
+          const consumption = parseFloat(consumptionRaw) || 0;
+          const minOrdering = consumption > 0 ? (consumption * 1.2) : 0;
+          const avail = parseFloat(item.QTY || localStorage.getItem(`draft_${item.Type}_${item.Code}`)) || 0;
+          
+          let sug = 0;
+          if (minOrdering > 0 && avail < minOrdering) {
+              sug = minOrdering - avail;
+          }
+          if (sug < 0) sug = 0;
+          
+          const adj = localStorage.getItem(`orders_adj_${item.Code}`) || '';
+          if(sug > 0) tr.style.backgroundColor = 'rgba(239, 68, 68, 0.05)';
+          
+          tr.innerHTML = `<td><input type="checkbox" ${isCons ? 'checked':''} onchange="saveOrderP('${safeCode}','cons',this.checked)"></td>
+          <td style="text-align:left;min-width:150px;font-weight:${sug>0?'700':'400'};color:${sug>0?'var(--danger)':''}">${item['Item Name']}</td>
+          <td style="font-family:monospace;font-size:11px">${item.Code}</td>
+          <td style="color:var(--primary);font-weight:700">${avail}</td>
+          <td><input type="number" min="0" class="qty-input mini" style="width:60px" value="${consumptionRaw !== null && consumptionRaw !== undefined ? consumptionRaw : ''}" oninput="saveOrderP('${safeCode}','consumption',this.value);renderTable()"></td>
+          <td style="font-weight:600;color:var(--text-muted)">${minOrdering > 0 ? minOrdering.toFixed(1) : '-'}</td>
+          <td style="color:var(--warning);font-weight:800;font-size:14px">${sug>0 ? Math.ceil(sug) : '-'}</td>
+          <td class="sticky-col sticky-col-qty"><input type="number" min="0" class="qty-input ${adj?'has-value':''}" value="${adj}" oninput="saveOrderP('${safeCode}','adj',this.value)" placeholder="${sug>0?Math.ceil(sug):''}"></td>`;
         } else {
           const val = localStorage.getItem(`draft_${currentTab}_${item.Code}`) || '';
           const itemOOS = isOOS(currentTab, item.Code);
@@ -725,11 +787,85 @@
       renderTable();
     }
 
+    function saveOrderP(code, prop, val) {
+      if(val === '' || val === null || val === false) localStorage.removeItem(`orders_${prop}_${code}`);
+      else localStorage.setItem(`orders_${prop}_${code}`, val);
+      
+      // Sync to Google Sheet if it's Consumption or Consumable
+      if(prop === 'consumption' || prop === 'cons') {
+         fetch(SCRIPT_URL, {
+           method: 'POST',
+           body: JSON.stringify({
+             action: 'saveItemSettings',
+             code: code,
+             consumption: prop === 'consumption' ? val : undefined,
+             consumable: prop === 'cons' ? val : undefined
+           })
+         });
+         flashSave();
+      }
+
+      if(prop === 'adj') updateStats();
+    }
+
+    function exportOrdersPDF() {
+      const {jsPDF} = window.jspdf;
+      const doc = new jsPDF('p','mm','a4');
+      const sheetName = "PURCHASE ORDER";
+      let rows = [], totalItems = 0;
+      
+      combinedInventory.forEach(item => {
+         let adj = localStorage.getItem(`orders_adj_${item.Code}`);
+         if(!adj) {
+            const consumption = parseFloat(item.Consumption || localStorage.getItem(`orders_consumption_${item.Code}`)) || 0;
+            const minOrdering = consumption > 0 ? (consumption * 1.2) : 0;
+            const avail = parseFloat(item.QTY || localStorage.getItem(`draft_${item.Type}_${item.Code}`)) || 0;
+            
+            if(minOrdering > 0 && avail < minOrdering) {
+               let sug = Math.ceil(minOrdering - avail);
+               if(sug > 0) adj = sug.toString();
+            }
+         }
+         if(adj && parseFloat(adj) > 0) {
+            rows.push([item.Code, item['Item Name'], item['WH Unit']||'', parseFloat(adj)]);
+            totalItems++;
+         }
+      });
+      
+      if(rows.length === 0) return showAlert('No suggested or adjusted items to order. Please input quantities.','warning');
+      
+      addPDFHeader(doc, sheetName);
+      doc.autoTable({
+        startY:33,
+        head:[['Code', 'Item Name', 'Unit', 'Order QTY']],
+        body:rows,
+        theme:'grid',
+        headStyles:{fillColor:[245, 158, 11],textColor:0,halign:'center',fontStyle:'bold'},
+        bodyStyles:{valign:'middle'},
+        didDrawPage: () => { addPDFHeader(doc, sheetName); }
+      });
+      doc.setFontSize(10);
+      doc.text(`Total Ordered Items: ${totalItems}`, 14, doc.lastAutoTable.finalY + 10);
+      doc.save(`EZEM_PO_${new Date().toISOString().split('T')[0]}.pdf`);
+      showAlert('Order PDF exported successfully!','success');
+    }
+
     // Upload
     async function confirmUpload() {
       const isMaster = currentTab === 'Monthly Inventory';
-      if(currentTab === 'OOS') return showAlert('OOS tab is view-only. Switch to another tab to upload.','warning');
+      const isOrders = currentTab === 'Orders';
+      const isOOS_Tab = currentTab === 'OOS';
+      
+      if(isOOS_Tab) {
+         const oosItems = getAllOOSProducts();
+         if(oosItems.length === 0) return showAlert('No OOS items found to send.','info');
+         if(!await showConfirm(`Send Out-of-Stock report to Telegram?`,'OOS Report')) return;
+         sendOOSAutoReport(oosItems, 'Manual OOS Report');
+         return;
+      }
+
       if(!await showConfirm(`Upload data to ${currentTab}?`,'Upload Confirmation')) return;
+
       let uploadItems = [];
       if(isMaster) {
         uploadItems = combinedInventory.map(i => {
@@ -737,84 +873,61 @@
           const q2 = parseFloat(localStorage.getItem(`draft_Master_${i.Code}_q2`))||0;
           const q3 = parseFloat(localStorage.getItem(`draft_Master_${i.Code}_q3`))||0;
           const total = q1 + q2 + q3;
-          return {
-            Code: i.Code,
-            'Item Name': i['Item Name'],
-            'WH Unit': i['WH Unit'] || '',
-            Refranc: i.Refranc || i.ref || '',
-            Type: i.Type || '',
-            Cost: parseFloat(i.Cost)||0,
-            QTY: total
-          };
+          return { Code: i.Code, 'Item Name': i['Item Name'], 'WH Unit': i['WH Unit'] || '', Refranc: i.Refranc || i.ref || '', Type: i.Type || '', Cost: parseFloat(i.Cost)||0, QTY: total };
         }).filter(i => i.QTY > 0);
+      } else if(isOrders) {
+        uploadItems = combinedInventory.map(i => {
+          const q = localStorage.getItem(`orders_adj_${i.Code}`);
+          const qVal = parseFloat(q)||0;
+          return { Code: i.Code, 'Item Name': i['Item Name'], 'WH Unit': i['WH Unit'] || '', Refranc: i.Refranc || i.ref || '', Type: i.Type || '', Cost: parseFloat(i.Cost)||0, QTY: qVal };
+        }).filter(i => i.QTY !== 0);
       } else {
         uploadItems = combinedInventory.filter(i => (i.Type || '').toString().trim().toLowerCase() === currentTab.toLowerCase()).map(i => {
           const q = localStorage.getItem(`draft_${currentTab}_${i.Code}`);
-          const qVal = parseFloat(q)||0;
-          return {
-            Code: i.Code,
-            'Item Name': i['Item Name'],
-            'WH Unit': i['WH Unit'] || '',
-            Refranc: i.Refranc || i.ref || '',
-            Type: i.Type || '',
-            Cost: parseFloat(i.Cost)||0,
-            QTY: qVal
-          };
+          const qtyVal = parseFloat(q)||0;
+          return { Code: i.Code, 'Item Name': i['Item Name'], 'WH Unit': i['WH Unit'] || '', Refranc: i.Refranc || i.ref || '', Type: i.Type || '', Cost: parseFloat(i.Cost)||0, QTY: qtyVal };
         }).filter(i => i.QTY !== 0);
       }
-      if(!uploadItems.length) return showAlert('No data to upload.','warning','No Data');
+      
+      const oosItems = getAllOOSProducts().filter(i => i._sourceTab === currentTab);
+      if(!uploadItems.length && !oosItems.length) return showAlert('No data to upload.','warning','No Data');
 
       document.getElementById('loader-message').innerText = 'Uploading Data';
       document.getElementById('loader-overlay').style.display = 'flex';
-      fetch(SCRIPT_URL, {method:'POST',body:JSON.stringify({action:"upload",sheetName:currentTab,userName:currentUser,items:uploadItems})
+      
+      fetch(SCRIPT_URL, {
+        method:'POST',
+        body:JSON.stringify({
+          action:"upload",
+          sheetName:currentTab,
+          userName:currentUser,
+          items:uploadItems,
+          oosItems: oosItems 
+        })
       }).then(async r => { if(!r.ok) throw new Error('Server '+r.status); return r.json(); }).then(async res => {
         document.getElementById('loader-overlay').style.display='none';
         if(res.status==='success') {
           await showAlert(res.msg,'success');
-          
-          // Auto OOS Telegram Report
-          if(!isMaster) {
-            const oosItems = getAllOOSProducts().filter(i => i._sourceTab === currentTab);
-            if(oosItems.length > 0) {
-              sendOOSAutoReport(oosItems, currentTab);
-            }
-          }
-
           if(isMaster) combinedInventory.forEach(item => ['q1','q2','q3'].forEach(s => localStorage.removeItem(`draft_Master_${item.Code}_${s}`)));
+          else if(isOrders) combinedInventory.forEach(item => localStorage.removeItem(`orders_adj_${item.Code}`));
           else combinedInventory.filter(i => i.Type === currentTab).forEach(item => localStorage.removeItem(`draft_${currentTab}_${item.Code}`));
           renderTable();
-        } else showAlert(res.msg,'error');
-      }).catch(err => { document.getElementById('loader-overlay').style.display='none'; console.error(err); showAlert('Network error.','error'); });
-    }
-
-    function sendOOSAutoReport(oosItems, section) {
-      const normalizedItems = oosItems.map(item => ({
-        Refranc: item.Refranc || item.ref || '',
-        Code: item.Code || item.code || '',
-        'Item Name': item['Item Name'] || item.name || '',
-        'WH Unit': item['WH Unit'] || item.unit || '',
-        Type: item.Type || item.type || '',
-        Cost: item.Cost || item.cost || 0,
-        QTY: 0
-      }));
-
-      fetch(SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify({
-          action: 'oos_update',
-          items: normalizedItems,
-          section: section,
-          user: currentUser,
-          botToken: localStorage.getItem('tg_bot_token'),
-          chatId: localStorage.getItem('tg_chat_id')
-        })
+        } else {
+           showAlert(res.msg,'error');
+        }
+      }).catch(err => { 
+        document.getElementById('loader-overlay').style.display='none'; 
+        console.error(err); 
+        showAlert('Network error.','error'); 
       });
     }
 
     async function clearAllInputs() {
       if(await showConfirm(`Clear ALL inputs for ${currentTab}?`,'Clear All')) {
         const isMaster = currentTab === 'Monthly Inventory';
+        const isOrders = currentTab === 'Orders';
         if(isMaster) combinedInventory.forEach(item => ['q1','q2','q3'].forEach(s => localStorage.removeItem(`draft_Master_${item.Code}_${s}`)));
+        else if(isOrders) combinedInventory.forEach(item => localStorage.removeItem(`orders_adj_${item.Code}`));
         else combinedInventory.filter(i => i.Type === currentTab).forEach(item => localStorage.removeItem(`draft_${currentTab}_${item.Code}`));
         renderTable();
         showAlert(`All inputs for ${currentTab} cleared!`,'success');
@@ -846,7 +959,7 @@
           let grandTotal = 0;
           
           // Grouping by Section
-          const sections = ["Daily", "CK", "Weekly", "Monthly", "Monthly Inventory"];
+          const sections = ["Daily", "CK", "Weekly", "Monthly", "Monthly Inventory", "Orders", "OOS"];
           sections.forEach(secName => {
             const secData = res.report.filter(r => r.section === secName);
             if(secData.length > 0) {
@@ -937,8 +1050,7 @@
       const doc = new jsPDF('l','mm','a4');
       const sec = document.getElementById('rpt-section').value;
       addPDFHeader(doc, sec);
-      let totalCost = 0;
-      const sections = ["Daily", "CK", "Weekly", "Monthly", "Monthly Inventory"];
+      const sections = ["Daily", "CK", "Weekly", "Monthly", "Monthly Inventory", "Orders", "OOS"];
       const rows = [];
       let grandTotal = 0;
 
@@ -986,7 +1098,7 @@
         margin:{top:33, bottom:15},
         didDrawPage: d => { addPDFHeader(doc, sec); }
       });
-      addPDFFooter(doc, totalCost);
+      addPDFFooter(doc, grandTotal);
       doc.save(`EZEM_Report_${sec}_${currentUser}_${new Date().toISOString().split('T')[0]}.pdf`);
     }
 
@@ -994,8 +1106,8 @@
       if(!currentReportData.length) return showAlert('Generate a report first.','warning');
       
       // Default values from code.gs
-      const defaultToken = "8475097712:AAEPMef5hjUKnPlZ6VnQvqd6tMnj8JFZVAw";
-      const defaultChatId = "-4652382472";
+      const defaultToken = "8630064385:AAEOIyHLx5oHfJS9Gv0z4KanTLQZ61GTtEQ";
+      const defaultChatId = "839787526";
       
       // Use saved settings or defaults
       let botToken = localStorage.getItem('tg_bot_token') || defaultToken;
@@ -1119,8 +1231,8 @@
       const savedChatId = localStorage.getItem('tg_chat_id');
       
       // Default values from code.gs
-      const defaultToken = "8475097712:AAEPMef5hjUKnPlZ6VnQvqd6tMnj8JFZVAw";
-      const defaultChatId = "-4652382472";
+      const defaultToken = "8630064385:AAEOIyHLx5oHfJS9Gv0z4KanTLQZ61GTtEQ";
+      const defaultChatId = "839787526";
       
       document.getElementById('tg-token').value = savedToken || defaultToken;
       document.getElementById('tg-chat-id').value = savedChatId || defaultChatId;
@@ -1188,51 +1300,37 @@
       });
     }
 
-    async function sendOOSAutoReport(oosItems, tabName) {
+    function sendOOSAutoReport(oosItems, tabName) {
       if(!oosItems || oosItems.length === 0) return;
       
-      const {jsPDF} = window.jspdf;
-      const doc = new jsPDF('l','mm','a4');
-      const sheetName = `OOS ALERT - ${tabName}`;
+      const defaultToken = "8630064385:AAEOIyHLx5oHfJS9Gv0z4KanTLQZ61GTtEQ";
+      const defaultChatId = "839787526";
 
-      let rows = [], totalCost = 0;
-      oosItems.forEach(i => {
-        // OOS implies qty 0 for current count, so Total Cost for these is 0
-        rows.push([i.Refranc||i.ref||'-', i.Code||i.code, i['Item Name']||i.name, i['WH Unit']||i.unit||'', i.Type||i.type||'', (parseFloat(i.Cost||i.cost)||0).toFixed(2), '0', '0.00', currentUser, new Date().toISOString().split('T')[0]]);
-      });
-      totalCost = 0;
+      // Match OOS sheet columns: Ref, Code, Item Name, Arabic, Unit, Weight, Type, Cost, Status, Date, User
+      const itemsForServer = oosItems.map(i => ({
+         ref: i.Refranc || i.ref || '-',
+         code: i.Code || i.code || '',
+         name: i['Item Name'] || i.name || '',
+         arabic: i.Arabic || '',
+         unit: i['WH Unit'] || i.unit || '',
+         weight: i.Weight || '',
+         type: i.Type || i.type || '',
+         cost: i.Cost || i.cost || 0
+      }));
 
-      addPDFHeader(doc, sheetName);
-
-      const head = [['Refranc','Code','Item Name','WH Unit','Type','Cost','QTY','Total Cost','User','Date']];
-      const foot = [Array(head[0].length-2).fill('').concat(['Total Cost:', `EGP ${totalCost.toLocaleString('en',{minimumFractionDigits:2})}`])];
-
-      doc.autoTable({
-        startY: 33,
-        head,
-        body: rows,
-        foot,
-        theme: 'grid',
-        tableWidth: 'auto',
-        headStyles: {fillColor: [239, 68, 68], textColor: 255, halign: 'center', fontStyle: 'bold', fontSize: 9},
-        bodyStyles: {fontSize: 8, valign: 'middle'},
-        footStyles: {fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold', fontSize: 9},
-        margin: {top: 33, bottom: 15},
-        didDrawPage: () => { addPDFHeader(doc, sheetName); }
-      });
-
-      addPDFFooter(doc, totalCost);
-
-      const blob = doc.output('blob');
-      const fd = new FormData();
-      fd.append("chat_id", document.getElementById('tg-chat-id').value);
-      fd.append("document", blob, `OOS_Alert_${tabName}.pdf`);
-      fd.append("caption", `🚨 *OUT OF STOCK ALERT*\n\nItems marked as OOS during *${tabName}* inventory upload.\n\n👤 Reported by: ${currentUser}\n📅 Date: ${new Date().toLocaleString('en-GB')}`);
-      
-      try {
-        await fetch(`https://api.telegram.org/bot${document.getElementById('tg-token').value}/sendDocument`, {method:'POST',body:fd});
-        console.log("OOS Auto-report sent to Telegram.");
-      } catch(e) { console.error("Failed to send OOS auto-report", e); }
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'oos_update',
+          items: itemsForServer,
+          section: tabName,
+          user: currentUser,
+          botToken: localStorage.getItem('tg_bot_token') || defaultToken,
+          chatId: localStorage.getItem('tg_chat_id') || defaultChatId
+        })
+      }).then(r => r.json()).then(res => {
+         console.log("OOS Server-side update response:", res);
+      }).catch(err => console.error("OOS Update Error:", err));
     }
 
     window.onload = initSystem;
