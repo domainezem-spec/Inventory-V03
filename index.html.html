@@ -120,18 +120,18 @@
     td{padding:8px;text-align:center;font-size:12px;border-bottom:1px solid rgba(51,65,85,.5);vertical-align:middle;height:42px;color:var(--text)}
     tr:hover td{background:rgba(99,102,241,.05)}
 
-    .sticky-col{position:sticky;background:var(--bg-card);z-index:30;border-right:1px solid var(--border)}
-    .sticky-col-qty{left:0;width:65px;background:rgba(99,102,241,.1)!important}
+    .sticky-col{position:sticky;background:var(--bg-card);z-index:30}
+    .sticky-col-qty{left:0;width:60px;background:rgba(99,102,241,.05)!important;border-right:1px solid var(--border)}
+    .sticky-col-oos{left:60px;width:45px;border-right:1px solid var(--border)}
     th.sticky-col{background:var(--bg-elevated);z-index:60}
 
-    .qty-input{width:100%;padding:6px 0;border:1px solid transparent;background:transparent;border-radius:8px;text-align:center;font-size:14px;font-weight:700;color:var(--text);transition:.2s;height:32px;min-width:50px}
+    .qty-input{width:100%;padding:6px 0;border:1px solid transparent;background:transparent;border-radius:8px;text-align:center;font-size:14px;font-weight:700;color:var(--text);transition:.2s;height:32px;min-width:45px}
     .qty-input:focus{background:var(--bg-elevated);box-shadow:0 0 0 2px rgba(99,102,241,.3);border-color:var(--primary)}
     .qty-input.has-value{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3)}
 
     .oos-toggle{width:18px;height:18px;cursor:pointer;accent-color:var(--warning)}
     tr.oos-row td{opacity:.5;text-decoration:line-through}
-    tr.oos-row .sticky-col-qty{text-decoration:none;opacity:1}
-    tr.oos-row .sticky-col-oos{text-decoration:none;opacity:1}
+    tr.oos-row .sticky-col{text-decoration:none;opacity:1}
 
     .admin-qty-col{width:45px;padding:2px}
     .qty-input.mini{width:38px;border:1px solid var(--border);background:var(--bg-elevated);font-size:12px}
@@ -671,9 +671,9 @@
       } else if(isOOSTab) {
         thead.innerHTML = `<tr><th>Source</th><th>Refranc</th><th>Code</th><th style="text-align:left">Item Name</th><th>WH Unit</th><th>Type</th><th>Cost</th><th>Remove</th></tr>`;
       } else if(isOrders) {
-        thead.innerHTML = `<tr><th style="width:40px">Cons.</th><th style="text-align:left">Item Name</th><th>Code</th><th style="color:var(--primary)">Stock on Hand</th><th style="width:80px">Consumption</th><th style="width:80px">Min Ordering<br><span style="font-size:9px;color:var(--text-muted)">(Cons.+20%)</span></th><th style="color:var(--warning)">Suggest Ordering</th><th class="sticky-col sticky-col-qty" style="width:80px">Actual Ordering</th></tr>`;
+        thead.innerHTML = `<tr><th class="sticky-col sticky-col-qty" style="width:60px">Order</th><th class="sticky-col sticky-col-oos" style="width:45px">Cons.</th><th style="text-align:left">Item Name</th><th style="color:var(--primary)">SOH</th><th style="width:80px">Cons.</th><th style="width:80px">Min.</th><th style="color:var(--warning)">Sug.</th><th>Code</th></tr>`;
       } else {
-        thead.innerHTML = `<tr><th class="sticky-col sticky-col-qty">QTY</th><th style="text-align:left">Item Name</th><th>Refranc</th><th>Code</th><th>OOS</th><th>WH Unit</th><th>Type</th><th>Cost</th></tr>`;
+        thead.innerHTML = `<tr><th class="sticky-col sticky-col-qty">QTY</th><th class="sticky-col sticky-col-oos">OOS</th><th style="text-align:left">Item Name</th><th>Refranc</th><th>Code</th><th>WH Unit</th><th>Type</th><th>Cost</th></tr>`;
       }
 
       let items;
@@ -734,19 +734,19 @@
           const adj = localStorage.getItem(`orders_adj_${item.Code}`) || '';
           if(sug > 0) tr.style.backgroundColor = 'rgba(239, 68, 68, 0.05)';
           
-          tr.innerHTML = `<td><input type="checkbox" ${isCons ? 'checked':''} onchange="saveOrderP('${safeCode}','cons',this.checked)"></td>
+          tr.innerHTML = `<td class="sticky-col sticky-col-qty"><input type="number" min="0" class="qty-input ${adj?'has-value':''}" value="${adj}" oninput="saveOrderP('${safeCode}','adj',this.value)" placeholder="${sug>0?Math.ceil(sug):''}"></td>
+          <td class="sticky-col sticky-col-oos"><input type="checkbox" ${isCons ? 'checked':''} onchange="saveOrderP('${safeCode}','cons',this.checked)"></td>
           <td style="text-align:left;min-width:150px;font-weight:${sug>0?'700':'400'};color:${sug>0?'var(--danger)':''}">${item['Item Name']}</td>
-          <td style="font-family:monospace;font-size:11px">${item.Code}</td>
           <td style="color:var(--primary);font-weight:700">${avail}</td>
-          <td><input type="number" min="0" class="qty-input mini" style="width:60px" value="${consumptionRaw !== null && consumptionRaw !== undefined ? consumptionRaw : ''}" oninput="saveOrderP('${safeCode}','consumption',this.value);renderTable()"></td>
+          <td><input type="number" min="0" class="qty-input mini" style="width:55px" value="${consumptionRaw !== null && consumptionRaw !== undefined ? consumptionRaw : ''}" oninput="saveOrderP('${safeCode}','consumption',this.value);renderTable()"></td>
           <td style="font-weight:600;color:var(--text-muted)">${minOrdering > 0 ? minOrdering.toFixed(1) : '-'}</td>
-          <td style="color:var(--warning);font-weight:800;font-size:14px">${sug>0 ? Math.ceil(sug) : '-'}</td>
-          <td class="sticky-col sticky-col-qty"><input type="number" min="0" class="qty-input ${adj?'has-value':''}" value="${adj}" oninput="saveOrderP('${safeCode}','adj',this.value)" placeholder="${sug>0?Math.ceil(sug):''}"></td>`;
+          <td style="color:var(--warning);font-weight:800;font-size:13px">${sug>0 ? Math.ceil(sug) : '-'}</td>
+          <td style="font-family:monospace;font-size:10px">${item.Code}</td>`;
         } else {
           const val = localStorage.getItem(`draft_${currentTab}_${item.Code}`) || '';
           const itemOOS = isOOS(currentTab, item.Code);
           if(itemOOS) tr.classList.add('oos-row');
-          tr.innerHTML = `<td class="sticky-col sticky-col-qty" style="width:65px"><input type="number" min="0" class="qty-input ${val ? 'has-value' : ''}" value="${val}" oninput="saveD('${item.Code}',this)" ${itemOOS ? 'disabled' : ''}></td><td style="text-align:left;min-width:150px">${item['Item Name']}</td><td>${item.Refranc||item.ref||'-'}</td><td style="width:90px">${item.Code}</td><td><input type="checkbox" class="oos-toggle" ${itemOOS ? 'checked' : ''} onchange="toggleOOS('${currentTab}','${item.Code}',this.checked)"></td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td>`;
+          tr.innerHTML = `<td class="sticky-col sticky-col-qty"><input type="number" min="0" class="qty-input ${val ? 'has-value' : ''}" value="${val}" oninput="saveD('${item.Code}',this)" ${itemOOS ? 'disabled' : ''}></td><td class="sticky-col sticky-col-oos"><input type="checkbox" class="oos-toggle" ${itemOOS ? 'checked' : ''} onchange="toggleOOS('${currentTab}','${item.Code}',this.checked)"></td><td style="text-align:left;min-width:150px">${item['Item Name']}</td><td>${item.Refranc||item.ref||'-'}</td><td style="width:90px">${item.Code}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td>`;
         }
         tbody.appendChild(tr);
       });
