@@ -121,17 +121,22 @@
     tr:hover td{background:rgba(99,102,241,.05)}
 
     .sticky-col{position:sticky;background:var(--bg-card);z-index:30}
-    .sticky-col-qty{left:0;width:60px;background:rgba(99,102,241,.05)!important;border-right:1px solid var(--border)}
+    .sticky-col-qty{left:48px;width:60px;background:rgba(99,102,241,.05)!important;border-right:1px solid var(--border)}
+    .sticky-col-ref{left:0;width:60px;border-right:none}
+    .sticky-col-code{left:60px;width:90px;border-right:1px solid var(--border)}
     .sticky-col-oos{left:60px;width:45px;border-right:1px solid var(--border)}
     th.sticky-col{background:var(--bg-elevated);z-index:60}
 
-    .qty-input{width:100%;padding:6px 0;border:1px solid transparent;background:transparent;border-radius:8px;text-align:center;font-size:14px;font-weight:700;color:var(--text);transition:.2s;height:32px;min-width:45px}
-    .qty-input:focus{background:var(--bg-elevated);box-shadow:0 0 0 2px rgba(99,102,241,.3);border-color:var(--primary)}
-    .qty-input.has-value{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3)}
+    .qty-input{width:100%;padding:6px 0;border:2px solid rgba(99,102,241,0.25);background:linear-gradient(135deg,rgba(99,102,241,0.08),rgba(129,140,248,0.05));border-radius:10px;text-align:center;font-size:14px;font-weight:800;color:var(--primary-dark);transition:.2s;height:32px;min-width:45px}
+    .qty-input:focus{background:rgba(99,102,241,0.12);box-shadow:0 0 0 3px rgba(99,102,241,.25);border-color:var(--primary)}
+    .qty-input.has-value{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.4);color:var(--secondary-dark)}
 
+    /* OOS Column Styles */
+    th.oos-col{background:rgba(245,158,11,0.08)!important;color:var(--warning)!important;width:44px;font-size:10px;letter-spacing:0}
+    td.oos-cell{background:rgba(245,158,11,0.04);width:44px;text-align:center;border-right:1px dashed rgba(245,158,11,0.2)}
     .oos-toggle{width:18px;height:18px;cursor:pointer;accent-color:var(--warning)}
     tr.oos-row td{opacity:.5;text-decoration:line-through}
-    tr.oos-row .sticky-col{text-decoration:none;opacity:1}
+    tr.oos-row .oos-cell{text-decoration:none;opacity:1}
 
     .admin-qty-col{width:45px;padding:2px}
     .qty-input.mini{width:38px;border:1px solid var(--border);background:var(--bg-elevated);font-size:12px}
@@ -460,46 +465,75 @@
       [...types].sort().forEach(t => { sel.innerHTML += `<option value="${t}">${t}</option>`; });
     }
 
-    function attemptLogin() {
+    async function attemptLogin() {
       const n = document.getElementById('user-select').value;
       const p = document.getElementById('user-pass').value;
-      const u = masterData.users.find(x => x.name === n && x.pass == p);
-      if(u) {
-        currentUser = n;
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('display-user').innerText = n;
-        
-        // Apply Department Permissions
-        const userDept = u.dept || 'All';
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-          const tabName = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
-          if(u.role === 'Admin') {
+      if(!n || !p) {
+        document.getElementById('err-msg').innerText = 'Please select user and enter password.';
+        document.getElementById('err-msg').style.display = 'block';
+        return;
+      }
+      document.getElementById('err-msg').style.display = 'none';
+      
+      let u = null;
+      if (masterData && masterData.users) {
+        u = masterData.users.find(x => x.name === n && x.pass == p);
+      }
+
+      if(!u) {
+         try {
+           document.getElementById('err-msg').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying on server...';
+           document.getElementById('err-msg').style.display = 'block';
+           const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'login', name: n, pass: p }) });
+           const result = await res.json();
+           if(result.status === 'success') {
+             u = result.user;
+           } else {
+             document.getElementById('err-msg').innerText = 'Authentication Failed. Check your password.';
+             document.getElementById('err-msg').style.display = 'block';
+             return;
+           }
+         } catch(err) {
+           document.getElementById('err-msg').innerText = 'Network Error. Cannot reach server.';
+           document.getElementById('err-msg').style.display = 'block';
+           return;
+         }
+      }
+
+      // If we reach here, we have u (from local or server)
+      document.getElementById('err-msg').style.display = 'none';
+      currentUser = n;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('display-user').innerText = n;
+      
+      const userDept = u.dept || 'All';
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        const tabName = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
+        if(u.role === 'Admin') {
+          btn.style.display = 'inline-block';
+        } else {
+          if(tabName === 'OOS' || tabName === userDept || userDept === 'All') {
             btn.style.display = 'inline-block';
           } else {
-            if(tabName === 'OOS' || tabName === userDept || userDept === 'All') {
-              btn.style.display = 'inline-block';
-            } else {
-              btn.style.display = 'none';
-            }
+            btn.style.display = 'none';
           }
-        });
-
-        if(u.role === 'Admin') {
-          document.getElementById('btn-master').style.display = 'inline-block';
-          document.getElementById('btn-admin-report').style.display = 'flex';
-          document.getElementById('btn-admin-users').style.display = 'flex';
-          document.getElementById('admin-badge').style.display = 'inline-block';
-          document.getElementById('btn-user-mgmt').style.display = 'inline-block';
         }
-        const h = new Date().getHours();
-        const greeting = h < 12 ? 'Good Morning' : h < 18 ? 'Good Afternoon' : 'Good Evening';
-        showAlert(`${greeting}, ${n}! 👋<br><br>Welcome to EZEM Inventory V4. Ready to manage your inventory! 🚀`,'success','Welcome! 🎉');
-        
-        // Auto-switch to their department if not admin
-        if(u.role !== 'Admin' && userDept !== 'All') switchTab(userDept);
-        else switchTab('Daily');
+      });
 
-      } else { document.getElementById('err-msg').style.display = 'block'; }
+      if(u.role === 'Admin') {
+        document.getElementById('btn-master').style.display = 'inline-block';
+        document.getElementById('btn-admin-report').style.display = 'flex';
+        document.getElementById('btn-admin-users').style.display = 'flex';
+        document.getElementById('admin-badge').style.display = 'inline-block';
+        document.getElementById('btn-user-mgmt').style.display = 'inline-block';
+      }
+      
+      const h = new Date().getHours();
+      const greeting = h < 12 ? 'Good Morning' : h < 18 ? 'Good Afternoon' : 'Good Evening';
+      showAlert(`${greeting}, ${n}! Welcome to EZEM Inventory V4.`,'success','Welcome!');
+      
+      if(u.role !== 'Admin' && userDept !== 'All') switchTab(userDept);
+      else switchTab('Daily');
     }
 
     async function logout() {
@@ -673,7 +707,7 @@
       } else if(isOrders) {
         thead.innerHTML = `<tr><th class="sticky-col sticky-col-qty" style="width:60px">Order</th><th class="sticky-col sticky-col-oos" style="width:45px">Cons.</th><th style="text-align:left">Item Name</th><th style="color:var(--primary)">SOH</th><th style="width:80px">Cons.</th><th style="width:80px">Min.</th><th style="color:var(--warning)">Sug.</th><th>Code</th></tr>`;
       } else {
-        thead.innerHTML = `<tr><th class="sticky-col sticky-col-qty">QTY</th><th class="sticky-col sticky-col-oos">OOS</th><th style="text-align:left">Item Name</th><th>Refranc</th><th>Code</th><th>WH Unit</th><th>Type</th><th>Cost</th></tr>`;
+        thead.innerHTML = `<tr><th class="oos-col" style="width:44px">OOS</th><th class="sticky-col sticky-col-ref">Refranc</th><th class="sticky-col sticky-col-code">Code</th><th class="sticky-col sticky-col-qty" style="background:rgba(99,102,241,.08)">QTY</th><th style="text-align:left">Item Name</th><th>WH Unit</th><th>Type</th><th>Cost</th></tr>`;
       }
 
       let items;
@@ -746,7 +780,7 @@
           const val = localStorage.getItem(`draft_${currentTab}_${item.Code}`) || '';
           const itemOOS = isOOS(currentTab, item.Code);
           if(itemOOS) tr.classList.add('oos-row');
-          tr.innerHTML = `<td class="sticky-col sticky-col-qty"><input type="number" min="0" class="qty-input ${val ? 'has-value' : ''}" value="${val}" oninput="saveD('${item.Code}',this)" ${itemOOS ? 'disabled' : ''}></td><td class="sticky-col sticky-col-oos"><input type="checkbox" class="oos-toggle" ${itemOOS ? 'checked' : ''} onchange="toggleOOS('${currentTab}','${item.Code}',this.checked)"></td><td style="text-align:left;min-width:150px">${item['Item Name']}</td><td>${item.Refranc||item.ref||'-'}</td><td style="width:90px">${item.Code}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td>`;
+          tr.innerHTML = `<td class="oos-cell"><input type="checkbox" class="oos-toggle" ${itemOOS ? 'checked' : ''} onchange="toggleOOS('${currentTab}','${item.Code}',this.checked)"></td><td class="sticky-col sticky-col-ref">${item.Refranc||item.ref||'-'}</td><td class="sticky-col sticky-col-code" style="font-family:monospace;color:var(--primary-light);font-weight:700">${item.Code}</td><td class="sticky-col sticky-col-qty"><input type="number" min="0" class="qty-input ${val ? 'has-value' : ''}" value="${val}" oninput="saveD('${item.Code}',this)" ${itemOOS ? 'disabled' : ''}></td><td style="text-align:left;min-width:150px">${item['Item Name']}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td>`;
         }
         tbody.appendChild(tr);
       });
@@ -853,73 +887,83 @@
     // Upload
     async function confirmUpload() {
       const isMaster = currentTab === 'Monthly Inventory';
-      const isOrders = currentTab === 'Orders';
-      const isOOS_Tab = currentTab === 'OOS';
-      
-      if(isOOS_Tab) {
-         const oosItems = getAllOOSProducts();
-         if(oosItems.length === 0) return showAlert('No OOS items found to send.','info');
-         if(!await showConfirm(`Send Out-of-Stock report to Telegram?`,'OOS Report')) return;
-         sendOOSAutoReport(oosItems, 'Manual OOS Report');
-         return;
-      }
-
-      if(!await showConfirm(`Upload data to ${currentTab}?`,'Upload Confirmation')) return;
-
+      if(currentTab === 'OOS') return showAlert('OOS tab is view-only. Switch to another tab to upload.','warning');
+      if(!await showConfirm('Upload data to ' + currentTab + '?','Upload Confirmation')) return;
       let uploadItems = [];
+      let oosItems = [];
+      
       if(isMaster) {
         uploadItems = combinedInventory.map(i => {
-          const q1 = parseFloat(localStorage.getItem(`draft_Master_${i.Code}_q1`))||0;
-          const q2 = parseFloat(localStorage.getItem(`draft_Master_${i.Code}_q2`))||0;
-          const q3 = parseFloat(localStorage.getItem(`draft_Master_${i.Code}_q3`))||0;
-          const total = q1 + q2 + q3;
-          return { Code: i.Code, 'Item Name': i['Item Name'], 'WH Unit': i['WH Unit'] || '', Refranc: i.Refranc || i.ref || '', Type: i.Type || '', Cost: parseFloat(i.Cost)||0, QTY: total };
+          const q1 = localStorage.getItem('draft_Master_' + i.Code + '_q1');
+          const q2 = localStorage.getItem('draft_Master_' + i.Code + '_q2');
+          const q3 = localStorage.getItem('draft_Master_' + i.Code + '_q3');
+          const total = (parseFloat(q1)||0)+(parseFloat(q2)||0)+(parseFloat(q3)||0);
+          return {
+            Code: i.Code,
+            'Item Name': i['Item Name'],
+            'WH Unit': i['WH Unit'] || '',
+            Refranc: i.Refranc || i.ref || '',
+            Type: i.Type || '',
+            Cost: parseFloat(i.Cost)||0,
+            QTY: total
+          };
         }).filter(i => i.QTY > 0);
-      } else if(isOrders) {
-        uploadItems = combinedInventory.map(i => {
-          const q = localStorage.getItem(`orders_adj_${i.Code}`);
-          const qVal = parseFloat(q)||0;
-          return { Code: i.Code, 'Item Name': i['Item Name'], 'WH Unit': i['WH Unit'] || '', Refranc: i.Refranc || i.ref || '', Type: i.Type || '', Cost: parseFloat(i.Cost)||0, QTY: qVal };
-        }).filter(i => i.QTY !== 0);
       } else {
-        uploadItems = combinedInventory.filter(i => (i.Type || '').toString().trim().toLowerCase() === currentTab.toLowerCase()).map(i => {
-          const q = localStorage.getItem(`draft_${currentTab}_${i.Code}`);
-          const qtyVal = parseFloat(q)||0;
-          return { Code: i.Code, 'Item Name': i['Item Name'], 'WH Unit': i['WH Unit'] || '', Refranc: i.Refranc || i.ref || '', Type: i.Type || '', Cost: parseFloat(i.Cost)||0, QTY: qtyVal };
+        const tabItems = combinedInventory.filter(i => (i.Type||'').toString().trim().toLowerCase() === currentTab.toLowerCase());
+        uploadItems = tabItems.map(i => {
+          const q = localStorage.getItem('draft_' + currentTab + '_' + i.Code);
+          const qVal = parseFloat(q)||0;
+          return {
+            Code: i.Code,
+            'Item Name': i['Item Name'],
+            'WH Unit': i['WH Unit'] || '',
+            Refranc: i.Refranc || i.ref || '',
+            Type: i.Type || '',
+            Cost: parseFloat(i.Cost)||0,
+            QTY: qVal
+          };
         }).filter(i => i.QTY !== 0);
+        
+        // Extract OOS items
+        const rawOos = getAllOOSProducts().filter(i => i._sourceTab === currentTab);
+        oosItems = rawOos.map(i => ({
+            Code: i.Code,
+            'Item Name': i['Item Name'],
+            'WH Unit': i['WH Unit'] || '',
+            Refranc: i.Refranc || i.ref || '',
+            Type: i.Type || '',
+            Cost: parseFloat(i.Cost)||0,
+            QTY: 0,
+            isOOS: true
+        }));
       }
       
-      const oosItems = getAllOOSProducts().filter(i => i._sourceTab === currentTab);
       if(!uploadItems.length && !oosItems.length) return showAlert('No data to upload.','warning','No Data');
+      
+      const combinedPayload = uploadItems.concat(oosItems);
 
       document.getElementById('loader-message').innerText = 'Uploading Data';
       document.getElementById('loader-overlay').style.display = 'flex';
-      
-      fetch(SCRIPT_URL, {
-        method:'POST',
-        body:JSON.stringify({
-          action:"upload",
-          sheetName:currentTab,
-          userName:currentUser,
-          items:uploadItems,
-          oosItems: oosItems 
-        })
+      fetch(SCRIPT_URL, {method:'POST',body:JSON.stringify({
+        action:"upload",
+        sheetName:currentTab,
+        userName:currentUser,
+        items:combinedPayload,
+        oosItems: oosItems
+      })
       }).then(async r => { if(!r.ok) throw new Error('Server '+r.status); return r.json(); }).then(async res => {
         document.getElementById('loader-overlay').style.display='none';
         if(res.status==='success') {
           await showAlert(res.msg,'success');
-          if(isMaster) combinedInventory.forEach(item => ['q1','q2','q3'].forEach(s => localStorage.removeItem(`draft_Master_${item.Code}_${s}`)));
-          else if(isOrders) combinedInventory.forEach(item => localStorage.removeItem(`orders_adj_${item.Code}`));
-          else combinedInventory.filter(i => i.Type === currentTab).forEach(item => localStorage.removeItem(`draft_${currentTab}_${item.Code}`));
+
+          if(isMaster) combinedInventory.forEach(item => ['q1','q2','q3'].forEach(s => localStorage.removeItem('draft_Master_' + item.Code + '_' + s)));
+          else combinedInventory.filter(i => (i.Type||'').toString().trim().toLowerCase() === currentTab.toLowerCase()).forEach(item => localStorage.removeItem('draft_' + currentTab + '_' + item.Code));
+          
+          if(oosItems.length > 0) { oosItems.forEach(i => setOOS(currentTab, i.Code, false)); }
+          
           renderTable();
-        } else {
-           showAlert(res.msg,'error');
-        }
-      }).catch(err => { 
-        document.getElementById('loader-overlay').style.display='none'; 
-        console.error(err); 
-        showAlert('Network error.','error'); 
-      });
+        } else showAlert(res.msg,'error');
+      }).catch(err => { document.getElementById('loader-overlay').style.display='none'; console.error(err); showAlert('Network error.','error'); });
     }
 
     async function clearAllInputs() {
