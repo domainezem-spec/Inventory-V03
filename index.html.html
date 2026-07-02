@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EL-Hamd-GK | Inventory System V4</title>
+  <title>BeFit | Marassi| Inventory System V4</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -120,25 +120,61 @@
     td{padding:8px;text-align:center;font-size:12px;border-bottom:1px solid rgba(51,65,85,.5);vertical-align:middle;height:42px;color:var(--text)}
     tr:hover td{background:rgba(99,102,241,.05)}
 
-    .sticky-col{position:sticky;background:var(--bg-card);z-index:30}
-    .sticky-col-qty{left:48px;width:60px;background:rgba(99,102,241,.05)!important;border-right:1px solid var(--border)}
-    .sticky-col-ref{left:0;width:60px;border-right:none}
-    .sticky-col-code{left:60px;width:90px;border-right:1px solid var(--border)}
-    .sticky-col-oos{left:60px;width:45px;border-right:1px solid var(--border)}
-    th.sticky-col{background:var(--bg-elevated);z-index:60}
+    /* ── STICKY COLUMNS ── */
+    /* OOS — ثابت أقصى اليسار */
+    .sticky-col-oos-first {
+      position: sticky;
+      left: 0;
+      z-index: 31;
+      width: 40px;
+      min-width: 40px;
+      max-width: 40px;
+      background: #fff8ed;          /* خلفية صلبة مش شفافة */
+      border-right: 1px dashed #f59e0b;
+      text-align: center;
+    }
+    /* QTY — ثابت بعد OOS بـ 40px */
+    .sticky-col-qty {
+      position: sticky;
+      left: 40px;
+      z-index: 30;
+      width: 58px;
+      min-width: 58px;
+      max-width: 58px;
+      background: #f0f0ff;          /* خلفية صلبة مش شفافة */
+      border-right: 2px solid #c7d2fe;
+    }
+    /* Header sticky */
+    th.sticky-col-oos-first {
+      position: sticky;
+      left: 0;
+      z-index: 61;
+      background: #fef3c7;
+      color: #d97706;
+      font-size: 9px;
+    }
+    th.sticky-col-qty {
+      position: sticky;
+      left: 40px;
+      z-index: 60;
+      background: #e0e7ff;
+      color: #4338ca;
+    }
+    /* hover لا يكسر الـ sticky background */
+    tr:hover .sticky-col-oos-first { background: #fff3d9; }
+    tr:hover .sticky-col-qty       { background: #e8eaff; }
+    tr.oos-row .sticky-col-oos-first{ opacity: 1; text-decoration: none; }
 
+    /* OOS Column Styles */
+    td.oos-cell { text-align: center; }
+    .oos-toggle { width: 18px; height: 18px; cursor: pointer; accent-color: var(--warning); }
+    tr.oos-row td { opacity: .45; text-decoration: line-through; }
+    tr.oos-row .oos-cell { text-decoration: none; opacity: 1; }
+
+    .admin-qty-col{width:45px;padding:2px}
     .qty-input{width:100%;padding:6px 0;border:2px solid rgba(99,102,241,0.25);background:linear-gradient(135deg,rgba(99,102,241,0.08),rgba(129,140,248,0.05));border-radius:10px;text-align:center;font-size:14px;font-weight:800;color:var(--primary-dark);transition:.2s;height:32px;min-width:45px}
     .qty-input:focus{background:rgba(99,102,241,0.12);box-shadow:0 0 0 3px rgba(99,102,241,.25);border-color:var(--primary)}
     .qty-input.has-value{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.4);color:var(--secondary-dark)}
-
-    /* OOS Column Styles */
-    th.oos-col{background:rgba(245,158,11,0.08)!important;color:var(--warning)!important;width:44px;font-size:10px;letter-spacing:0}
-    td.oos-cell{background:rgba(245,158,11,0.04);width:44px;text-align:center;border-right:1px dashed rgba(245,158,11,0.2)}
-    .oos-toggle{width:18px;height:18px;cursor:pointer;accent-color:var(--warning)}
-    tr.oos-row td{opacity:.5;text-decoration:line-through}
-    tr.oos-row .oos-cell{text-decoration:none;opacity:1}
-
-    .admin-qty-col{width:45px;padding:2px}
     .qty-input.mini{width:38px;border:1px solid var(--border);background:var(--bg-elevated);font-size:12px}
     .qty-input.total{background:rgba(239,68,68,.1);color:var(--danger);border:none;font-weight:800;width:45px}
 
@@ -186,6 +222,85 @@
     .save-indicator{position:fixed;top:65px;right:20px;background:var(--secondary);color:white;padding:4px 12px;border-radius:8px;font-size:11px;font-weight:600;opacity:0;transition:opacity .3s;z-index:1001;pointer-events:none}
     .save-indicator.show{opacity:1}
 
+    /* ===== MOBILE RESPONSIVE ===== */
+    @media(max-width:768px){
+      /* Body */
+      body{font-size:12px;padding-bottom:70px}
+
+      /* Header - slim */
+      header{height:34px;padding:0 10px}
+      .brand-name{font-size:.85rem}
+      .brand-sub{display:none}
+      .header-clock{font-size:.65rem;padding:2px 6px}
+      .header-user{font-size:.75rem}
+
+      /* Tabs - slim scrollable */
+      .tabs-container{padding:3px 8px}
+      .tab-btn{padding:3px 8px;font-size:11px;border-radius:6px}
+
+      /* Stats bar - compact */
+      .stats-bar{padding:3px 8px;gap:5px}
+      .stat-item{padding:2px 6px;font-size:10px;gap:4px}
+      .stat-item i{font-size:11px}
+
+      /* Search */
+      .search-bar{padding:4px 8px;gap:5px}
+      .search-input{padding:5px 10px;font-size:11px}
+      .filter-select{padding:5px 6px;font-size:11px;min-width:100px}
+
+      /* Table wrapper */
+      .table-wrapper{margin:6px;border-radius:10px}
+      .table-scroll{max-height:60vh}
+      table{min-width:600px;font-size:11px}
+      th{padding:8px 5px;font-size:9px;letter-spacing:0}
+      td{padding:5px 4px;height:36px;font-size:11px}
+
+      /* QTY input - smaller on mobile */
+      .qty-input{font-size:12px;height:28px;padding:4px 0}
+      .oos-col,.oos-cell{width:34px}
+      .oos-toggle{width:16px;height:16px}
+
+      /* Footer - slim floating bar */
+      .footer-actions{
+        bottom:10px;
+        padding:6px 10px;
+        border-radius:14px;
+        gap:6px;
+        width:calc(100% - 20px);
+        height:auto
+      }
+      .btn-action{height:34px;font-size:11px;padding:0 8px;border-radius:8px;gap:4px}
+      .btn-action span{display:none}
+      .btn-tg,.btn-logout,.btn-clear{width:36px;font-size:15px}
+      .btn-upload{flex:2;font-size:11px}
+
+      /* Login - full screen on mobile */
+      .login-image-side{display:none}
+      .login-box-side{padding:20px}
+      .login-title{font-size:1.5rem}
+      .login-subtitle{font-size:.8rem;margin-bottom:20px}
+      .login-input{height:44px;font-size:13px}
+      .btn-login{font-size:14px;padding:12px}
+
+      /* Modals */
+      .modal-box{padding:16px;border-radius:14px;max-height:90vh}
+      .report-controls,.user-mgmt-grid{grid-template-columns:1fr}
+      .control-input{height:36px;font-size:12px}
+
+      /* Save indicator */
+      .save-indicator{top:44px;right:8px;font-size:10px;padding:3px 8px}
+    }
+
+    /* Extra small phones */
+    @media(max-width:400px){
+      table{min-width:480px}
+      th{padding:6px 3px;font-size:8px}
+      td{padding:4px 3px;height:32px;font-size:10px}
+      .qty-input{font-size:11px;height:26px}
+      .btn-action{height:30px;font-size:10px}
+      .btn-tg,.btn-logout,.btn-clear{width:32px;font-size:13px}
+    }
+
     /* Print */
     @media print{#login-screen,header,.tabs-container,.stats-bar,.search-bar,.footer-actions,.modal-overlay{display:none!important}body{background:#fff;color:#000;padding:0}.table-wrapper{margin:0;border:none;box-shadow:none}table{min-width:auto}th{background:#eee;color:#333}td{color:#333;border-bottom:1px solid #ddd}}
   </style>
@@ -214,7 +329,7 @@
         <div class="login-box">
           <img src="https://lh3.googleusercontent.com/d/1gwXYV5GVOzHgkI3QpFY4Up5mavYFBVcl" alt="EZEM Logo" style="width:70px;margin-bottom:12px;border-radius:16px;box-shadow:var(--shadow)">
           <div class="login-title">LOGIN USER</div>
-          <div class="login-subtitle">EL-Hamd-GK | INVENTORY V4</div>
+          <div class="login-subtitle">BeFit | Marassi| INVENTORY V4</div>
           <select id="user-select" class="login-input" autocomplete="off"><option value="" disabled selected>Select Identity</option></select>
           <input type="password" id="user-pass" class="login-input" placeholder="Enter Password" autocomplete="new-password">
           <button class="btn-login" onclick="attemptLogin()">ACCESS DASHBOARD</button>
@@ -228,7 +343,7 @@
     <div class="brand">
       <img src="https://lh3.googleusercontent.com/d/1gwXYV5GVOzHgkI3QpFY4Up5mavYFBVcl" alt="Logo" style="width:36px;height:auto;border-radius:10px">
       <div style="display:flex;flex-direction:column;line-height:1.2">
-        <span class="brand-name">EL-Hamd-GK</span>
+        <span class="brand-name">BeFit | Marasi</span>
         <span class="brand-sub">INVENTORY SYSTEM V4</span>
       </div>
     </div>
@@ -707,7 +822,16 @@
       } else if(isOrders) {
         thead.innerHTML = `<tr><th class="sticky-col sticky-col-qty" style="width:60px">Order</th><th class="sticky-col sticky-col-oos" style="width:45px">Cons.</th><th style="text-align:left">Item Name</th><th style="color:var(--primary)">SOH</th><th style="width:80px">Cons.</th><th style="width:80px">Min.</th><th style="color:var(--warning)">Sug.</th><th>Code</th></tr>`;
       } else {
-        thead.innerHTML = `<tr><th class="oos-col" style="width:44px">OOS</th><th class="sticky-col sticky-col-ref">Refranc</th><th class="sticky-col sticky-col-code">Code</th><th class="sticky-col sticky-col-qty" style="background:rgba(99,102,241,.08)">QTY</th><th style="text-align:left">Item Name</th><th>WH Unit</th><th>Type</th><th>Cost</th></tr>`;
+        thead.innerHTML = `<tr>
+          <th class="sticky-col-oos-first oos-col" style="color:var(--warning)">OOS</th>
+          <th class="sticky-col-qty">QTY</th>
+          <th style="text-align:left">Item Name</th>
+          <th>Code</th>
+          <th>Refranc</th>
+          <th>WH Unit</th>
+          <th>Type</th>
+          <th>Cost</th>
+        </tr>`;
       }
 
       let items;
@@ -780,7 +904,20 @@
           const val = localStorage.getItem(`draft_${currentTab}_${item.Code}`) || '';
           const itemOOS = isOOS(currentTab, item.Code);
           if(itemOOS) tr.classList.add('oos-row');
-          tr.innerHTML = `<td class="oos-cell"><input type="checkbox" class="oos-toggle" ${itemOOS ? 'checked' : ''} onchange="toggleOOS('${currentTab}','${item.Code}',this.checked)"></td><td class="sticky-col sticky-col-ref">${item.Refranc||item.ref||'-'}</td><td class="sticky-col sticky-col-code" style="font-family:monospace;color:var(--primary-light);font-weight:700">${item.Code}</td><td class="sticky-col sticky-col-qty"><input type="number" min="0" class="qty-input ${val ? 'has-value' : ''}" value="${val}" oninput="saveD('${item.Code}',this)" ${itemOOS ? 'disabled' : ''}></td><td style="text-align:left;min-width:150px">${item['Item Name']}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td>`;
+          tr.innerHTML = `
+            <td class="sticky-col-oos-first oos-cell">
+              <input type="checkbox" class="oos-toggle" ${itemOOS ? 'checked' : ''} onchange="toggleOOS('${currentTab}','${item.Code}',this.checked)">
+            </td>
+            <td class="sticky-col-qty">
+              <input type="number" min="0" class="qty-input ${val ? 'has-value' : ''}" value="${val}" oninput="saveD('${item.Code}',this)" ${itemOOS ? 'disabled' : ''}>
+            </td>
+            <td style="text-align:left;min-width:140px">${item['Item Name']}</td>
+            <td style="font-family:monospace;font-size:11px;color:var(--primary-light);font-weight:700">${item.Code}</td>
+            <td>${item.Refranc||item.ref||'-'}</td>
+            <td style="color:var(--text-muted)">${item['WH Unit']||''}</td>
+            <td>${item.Type||''}</td>
+            <td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td>
+          `;
         }
         tbody.appendChild(tr);
       });
@@ -1067,7 +1204,7 @@
       doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(200);
       doc.text(`Sheet: ${sheetName}`, 15, 17);
       doc.text(`User: ${currentUser}`, 15, 23);
-      doc.text(`System: EL-Hamd-GK`, pw/2, 17, {align:'center'});
+      doc.text(`System: BeFit | Marasi`, pw/2, 17, {align:'center'});
       doc.text(`Date: ${dateStr}`, pw - 15, 17, {align:'right'});
       doc.text(`Time: ${timeStr}`, pw - 15, 23, {align:'right'});
       doc.setTextColor(0);
