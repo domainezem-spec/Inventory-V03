@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BeFit | Marassi| Inventory System V4</title>
+  <title>BeFit | Marassi| Inventory System V.5.1</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -198,7 +198,7 @@
 
     .custom-dialog{background:var(--bg-card);border-radius:20px;padding:30px;max-width:400px;width:90%;border:1px solid var(--border);box-shadow:0 20px 60px rgba(0,0,0,.5);animation:slideUp .3s ease;text-align:center}
     .dialog-icon{font-size:3rem;margin-bottom:20px}
-    .dialog-icon.success{color:var(--secondary)}
+    .dialog-icon.success{color:var(--secondary)}  
     .dialog-icon.error{color:var(--danger)}
     .dialog-icon.warning{color:var(--warning)}
     .dialog-icon.info{color:var(--primary-light)}
@@ -406,7 +406,7 @@
   </div>
 
   <div class="footer-actions">
-    <button class="btn-action btn-tg" onclick="openTgModal()"><i class="fab fa-telegram-plane"></i></button>
+    <button class="btn-action btn-tg" id="btn-tg-config" onclick="openTgModal()" style="display:none"><i class="fab fa-telegram-plane"></i></button>
     <button class="btn-action btn-report" id="btn-admin-report" onclick="openReportView()"><i class="fas fa-chart-pie"></i> Reports</button>
     <button class="btn-action btn-report" id="btn-export-orders" style="display:none;background:var(--warning);color:#000;border:none;flex:1" onclick="exportOrdersPDF()"><i class="fas fa-file-invoice"></i> Orders</button>
     <button class="btn-action" id="btn-admin-users" style="display:none;background:var(--bg-elevated);color:var(--text);border:1px solid var(--border);flex:1" onclick="openUserMgmt()"><i class="fas fa-users"></i> Users</button>
@@ -693,6 +693,7 @@
         document.getElementById('btn-admin-users').style.display = 'flex';
         document.getElementById('admin-badge').style.display = 'inline-block';
         document.getElementById('btn-user-mgmt').style.display = 'inline-block';
+        document.getElementById('btn-tg-config').style.display = 'inline-flex';
       }
       
       const h = new Date().getHours();
@@ -712,6 +713,7 @@
         document.getElementById('btn-admin-users').style.display='none';
         document.getElementById('admin-badge').style.display='none';
         document.getElementById('btn-user-mgmt').style.display='none';
+        document.getElementById('btn-tg-config').style.display='none';
         document.getElementById('user-select').value='';
         document.getElementById('user-pass').value='';
         document.getElementById('err-msg').style.display='none';
@@ -1132,13 +1134,15 @@
       
       const combinedPayload = uploadItems.concat(oosItems);
 
+      const resolvedDept = currentDept || (masterData.users.find(u => u.name === currentUser)?.dept) || "";
+
       document.getElementById('loader-message').innerText = 'Uploading Data';
       document.getElementById('loader-overlay').style.display = 'flex';
       fetch(SCRIPT_URL, {method:'POST',body:JSON.stringify({
         action:"upload",
         sheetName:currentTab,
         userName:currentUser,
-        dept:currentDept,
+        dept:resolvedDept,
         items:combinedPayload,
         oosItems: oosItems
       })
@@ -1354,6 +1358,7 @@
       
       showAlert('Sending report to Telegram...','info');
       const section = document.getElementById('rpt-section').value;
+      const resolvedDept = currentDept || (masterData.users.find(u => u.name === currentUser)?.dept) || "";
       
       fetch(SCRIPT_URL, {
         method: 'POST',
@@ -1362,6 +1367,7 @@
           reportData: currentReportData,
           section: section,
           user: currentUser,
+          dept: resolvedDept,
           botToken: botToken,
           chatId: chatId
         })
