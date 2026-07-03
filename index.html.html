@@ -72,14 +72,16 @@
     .tabs-container{background:var(--bg-card);padding:4px 20px;border-bottom:1px solid var(--border);position:sticky;top:38px;z-index:900}
     .tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
     .tabs::-webkit-scrollbar{display:none}
-    .tab-btn{padding:4px 10px;border:1px solid transparent;border-radius:8px;cursor:pointer;font-weight:600;background:transparent;color:var(--text-muted);white-space:nowrap;font-size:12px;transition:.3s;position:relative}
-    .tab-btn:hover{background:var(--bg-elevated);color:var(--text)}
-    .tab-btn.active{background:var(--primary);color:white;border-color:var(--primary);box-shadow:0 2px 12px rgba(99,102,241,.4)}
+    .tab-btn{padding:8px 18px;border:1px solid transparent;border-radius:20px;cursor:pointer;font-weight:700;background:transparent;color:#1e40af;white-space:nowrap;font-size:13px;transition:.3s;position:relative}
+    .tab-btn:hover{background:var(--bg-elevated)}
+    .tab-btn.active{background:#5c5cf1;color:white;border-color:#5c5cf1;box-shadow:0 4px 15px rgba(92,92,241,0.4)}
     .tab-btn.admin-tab{color:var(--danger);border:1px solid rgba(239,68,68,.3);display:none}
-    .tab-btn.admin-tab.active{background:var(--danger);color:white;border-color:var(--danger)}
+    .tab-btn.admin-tab.active{background:var(--danger);color:white;border-color:var(--danger);box-shadow:0 4px 15px rgba(239,68,68,.4)}
     .tab-btn .tab-badge{position:absolute;top:-4px;right:-4px;background:var(--secondary);color:white;font-size:9px;padding:1px 5px;border-radius:10px;font-weight:700;min-width:18px;text-align:center}
     .tab-btn.oos-tab{color:var(--warning);border:1px solid rgba(245,158,11,.3)}
-    .tab-btn.oos-tab.active{background:var(--warning);color:#000;border-color:var(--warning)}
+    .tab-btn.oos-tab.active{background:var(--warning);color:#000;border-color:var(--warning);box-shadow:0 4px 15px rgba(245,158,11,.4)}
+    .tab-btn.orders-tab{color:#1e40af;border:1px solid rgba(245,158,11,.3)}
+    .tab-btn.orders-tab.active{background:var(--warning);color:#000;border-color:var(--warning);box-shadow:0 4px 15px rgba(245,158,11,.4)}
 
     /* Stats Bar */
     .stats-bar{display:flex;gap:8px;padding:4px 20px;background:var(--bg-card);border-bottom:1px solid var(--border);overflow-x:auto}
@@ -330,9 +332,14 @@
           <img src="https://lh3.googleusercontent.com/d/1gwXYV5GVOzHgkI3QpFY4Up5mavYFBVcl" alt="EZEM Logo" style="width:70px;margin-bottom:12px;border-radius:16px;box-shadow:var(--shadow)">
           <div class="login-title">LOGIN USER</div>
           <div class="login-subtitle">BeFit | Marassi| INVENTORY V4</div>
-          <select id="user-select" class="login-input" autocomplete="off"><option value="" disabled selected>Select Identity</option></select>
-          <input type="password" id="user-pass" class="login-input" placeholder="Enter Password" autocomplete="new-password">
-          <button class="btn-login" onclick="attemptLogin()">ACCESS DASHBOARD</button>
+          <select id="dept-select" class="login-input" style="background: #f4f6f9; border: 1px solid #e1e5eb; height: 48px; border-radius: 12px;" onchange="filterUsersByDept()">
+            <option value="" disabled selected>Select Department</option>
+          </select>
+          <select id="user-select" class="login-input" style="background: #f4f6f9; border: 1px solid #e1e5eb; height: 48px; border-radius: 12px;" disabled autocomplete="off">
+            <option value="" disabled selected>Select User</option>
+          </select>
+          <input type="password" id="user-pass" class="login-input" style="background: #f4f6f9; border: 1px solid #e1e5eb; height: 48px; border-radius: 12px;" placeholder="Enter Password" autocomplete="new-password" onkeypress="if(event.key === 'Enter') attemptLogin()">
+          <button class="btn-login" style="background: #767ff5; border-radius: 12px; padding: 15px; font-size: 15px; letter-spacing: 0.5px; margin-top: 25px; box-shadow: 0 5px 15px rgba(118, 127, 245, 0.3);" onclick="attemptLogin()">ACCESS DASHBOARD</button>
           <p id="err-msg" style="color:var(--danger);display:none;margin-top:12px;font-weight:600;font-size:13px">Authentication Failed</p>
         </div>
       </div>
@@ -357,14 +364,14 @@
     </div>
   </header>
 
-  <div class="tabs-container">
+  <div class="tabs-container" style="border-bottom:none; padding:10px 20px;">
     <nav class="tabs">
       <button class="tab-btn active" onclick="switchTab('Daily')">Daily <span class="tab-badge" id="badge-Daily" style="display:none">0</span></button>
       <button class="tab-btn" onclick="switchTab('CK')">CK <span class="tab-badge" id="badge-CK" style="display:none">0</span></button>
       <button class="tab-btn" onclick="switchTab('Weekly')">Weekly <span class="tab-badge" id="badge-Weekly" style="display:none">0</span></button>
       <button class="tab-btn" onclick="switchTab('Monthly')">Monthly <span class="tab-badge" id="badge-Monthly" style="display:none">0</span></button>
       <button class="tab-btn oos-tab" id="btn-oos" onclick="switchTab('OOS')"><i class="fas fa-ban"></i> OOS <span class="tab-badge" id="badge-OOS" style="display:none">0</span></button>
-      <button class="tab-btn" id="btn-orders" onclick="switchTab('Orders')" style="border:1px solid rgba(245,158,11,0.3)"><i class="fas fa-shopping-cart" style="color:var(--warning)"></i> Orders</button>
+      <button class="tab-btn orders-tab" id="btn-orders" onclick="switchTab('Orders')"><i class="fas fa-shopping-cart" style="color:var(--warning)"></i> Orders</button>
       <button class="tab-btn admin-tab" id="btn-master" onclick="switchTab('Monthly Inventory')"><i class="fas fa-database"></i> M. Inventory</button>
     </nav>
   </div>
@@ -462,18 +469,25 @@
             <option value="Admin">Admin</option>
           </select>
           <select id="new-user-dept" class="control-input">
-            <option value="All">Role Access: Full Admin</option>
-            <option value="Daily">Role Access: Daily Only</option>
-            <option value="CK">Role Access: CK Only</option>
-            <option value="Weekly">Role Access: Weekly Only</option>
-            <option value="Monthly">Role Access: Monthly Only</option>
+            <option value="BeFit Marassi">BeFit Marassi</option>
+            <option value="MUM">MUM</option>
+            <option value="All">All / Other</option>
           </select>
+          <div id="new-user-roll" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:var(--bg-card);padding:8px 12px;border-radius:8px;border:1px solid var(--border);grid-column:1/-1">
+             <span style="font-size:12px;font-weight:600;margin-right:10px"><i class="fas fa-lock"></i> Allow Access:</span>
+             <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px"><input type="checkbox" class="role-cb" value="Daily"> Daily</label>
+             <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px"><input type="checkbox" class="role-cb" value="CK"> CK</label>
+             <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px"><input type="checkbox" class="role-cb" value="Weekly"> Weekly</label>
+             <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px"><input type="checkbox" class="role-cb" value="Monthly"> Monthly</label>
+             <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px"><input type="checkbox" class="role-cb" value="Orders"> Orders</label>
+             <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px"><input type="checkbox" class="role-cb" value="All"> All</label>
+          </div>
         </div>
         <button class="btn-login" style="margin-top:10px;background:var(--secondary)" onclick="saveUser()"><i class="fas fa-user-plus"></i> Save User to Database</button>
       </div>
       <div style="overflow:auto;max-height:300px;border:1px solid var(--border);border-radius:12px">
         <table style="width:100%;min-width:auto">
-          <thead style="background:var(--bg-elevated)"><tr><th>Name</th><th>Role</th><th>Access</th><th>Action</th></tr></thead>
+          <thead style="background:var(--bg-elevated)"><tr><th>Name</th><th>Role</th><th>Dept</th><th>Access</th><th>Action</th></tr></thead>
           <tbody id="user-list-body"></tbody>
         </table>
       </div>
@@ -503,7 +517,7 @@
 
   <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyZD-EscKVlUGY7n8L6T9jwKC8sky_8bCGkPYno59qolzxzrVH44TwdAEgfG2q4603g/exec';
-    let currentUser = "", currentTab = "Daily";
+    let currentUser = "", currentDept = "", currentTab = "Daily";
     let masterData = { users: [], db: {} };
     let combinedInventory = [], currentReportData = [];
 
@@ -560,6 +574,18 @@
         document.getElementById('rpt-start').value = today;
         document.getElementById('rpt-end').value = today;
         populateTypeFilter();
+
+        const savedSession = localStorage.getItem('ezem_session');
+        if (savedSession) {
+          try {
+            const session = JSON.parse(savedSession);
+            if(session && session.user) {
+              applyUserSession(session.user, session.dept);
+              return;
+            }
+          } catch(e) {}
+        }
+
         switchTab('Daily');
       } catch(err) {
         console.error(err);
@@ -568,8 +594,25 @@
     }
 
     function populateLogin(users) {
-      const s = document.getElementById('user-select');
-      users.forEach(u => { let o = document.createElement('option'); o.value=u.name; o.text=u.name; s.appendChild(o); });
+      window.allUsers = users;
+      const dSel = document.getElementById('dept-select');
+      const depts = [...new Set(users.map(u => u.dept).filter(Boolean))];
+      depts.forEach(d => {
+        let o = document.createElement('option');
+        o.value = d; o.text = d; dSel.appendChild(o);
+      });
+    }
+
+    function filterUsersByDept() {
+      const dept = document.getElementById('dept-select').value;
+      const uSel = document.getElementById('user-select');
+      uSel.innerHTML = '<option value="" disabled selected>Select User</option>';
+      uSel.disabled = false;
+      const filtered = window.allUsers.filter(u => u.dept === dept);
+      filtered.forEach(u => {
+        let o = document.createElement('option');
+        o.value = u.name; o.text = u.name; uSel.appendChild(o);
+      });
     }
 
     function populateTypeFilter() {
@@ -618,16 +661,25 @@
       // If we reach here, we have u (from local or server)
       document.getElementById('err-msg').style.display = 'none';
       currentUser = n;
+      currentDept = document.getElementById('dept-select').value;
+      localStorage.setItem('ezem_session', JSON.stringify({ user: u, dept: currentDept }));
+      applyUserSession(u, currentDept);
+    }
+
+    function applyUserSession(u, userSelectedDept) {
+      currentUser = u.name;
+      currentDept = userSelectedDept;
       document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('display-user').innerText = n;
+      document.getElementById('display-user').innerText = u.name;
       
-      const userDept = u.dept || 'All';
+      const userAccess = u.roll || 'All';
+      const allowedTabs = userAccess.split(',').map(s => s.trim());
       document.querySelectorAll('.tab-btn').forEach(btn => {
         const tabName = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
-        if(u.role === 'Admin') {
+        if(u.role === 'Admin' || userAccess === 'All' || allowedTabs.includes('All')) {
           btn.style.display = 'inline-block';
         } else {
-          if(tabName === 'OOS' || tabName === userDept || userDept === 'All') {
+          if(tabName === 'OOS' || allowedTabs.includes(tabName)) {
             btn.style.display = 'inline-block';
           } else {
             btn.style.display = 'none';
@@ -645,14 +697,15 @@
       
       const h = new Date().getHours();
       const greeting = h < 12 ? 'Good Morning' : h < 18 ? 'Good Afternoon' : 'Good Evening';
-      showAlert(`${greeting}, ${n}! Welcome to EZEM Inventory V4.`,'success','Welcome!');
+      showAlert(`${greeting}, ${u.name}! Welcome to EZEM Inventory V4.`,'success','Welcome!');
       
-      if(u.role !== 'Admin' && userDept !== 'All') switchTab(userDept);
+      if(u.role !== 'Admin' && userAccess !== 'All' && !allowedTabs.includes('All') && allowedTabs.length > 0) switchTab(allowedTabs[0]);
       else switchTab('Daily');
     }
 
     async function logout() {
       if(await showConfirm('Are you sure you want to logout?','Logout')) {
+        localStorage.removeItem('ezem_session');
         currentUser=""; currentTab="Daily";
         document.getElementById('btn-master').style.display='none';
         document.getElementById('btn-admin-report').style.display='none';
@@ -1085,6 +1138,7 @@
         action:"upload",
         sheetName:currentTab,
         userName:currentUser,
+        dept:currentDept,
         items:combinedPayload,
         oosItems: oosItems
       })
@@ -1445,7 +1499,7 @@
       const tbody = document.getElementById('user-list-body');
       tbody.innerHTML = '';
       masterData.users.forEach(u => {
-        tbody.innerHTML += `<tr><td>${u.name}</td><td>${u.role}</td><td>${u.dept||'All'}</td><td><button onclick="editUser('${u.name}')" class="btn-action mini" style="background:var(--primary);padding:4px 8px;font-size:10px">Edit</button></td></tr>`;
+        tbody.innerHTML += `<tr><td>${u.name}</td><td>${u.role}</td><td>${u.dept||''}</td><td>${u.roll||'All'}</td><td><button onclick="editUser('${u.name}')" class="btn-action mini" style="background:var(--primary);padding:4px 8px;font-size:10px">Edit</button></td></tr>`;
       });
     }
     function editUser(name) {
@@ -1454,27 +1508,38 @@
       document.getElementById('new-user-name').value = u.name;
       document.getElementById('new-user-pass').value = u.pass;
       document.getElementById('new-user-role').value = u.role;
-      document.getElementById('new-user-dept').value = u.dept || 'All';
+      document.getElementById('new-user-dept').value = u.dept || '';
+      
+      const userRolls = (u.roll || 'All').split(',');
+      document.querySelectorAll('.role-cb').forEach(cb => {
+         cb.checked = userRolls.includes(cb.value) || userRolls.includes('All');
+      });
     }
     function saveUser() {
       const n = document.getElementById('new-user-name').value;
       const p = document.getElementById('new-user-pass').value;
       const r = document.getElementById('new-user-role').value;
       const d = document.getElementById('new-user-dept').value;
+      
+      const checkboxes = document.querySelectorAll('.role-cb:checked');
+      let rolls = [];
+      checkboxes.forEach(cb => rolls.push(cb.value));
+      const o = rolls.length > 0 ? rolls.join(',') : 'All';
+      
       if(!n || !p) return showAlert('Name and Password required','warning');
       
       document.getElementById('loader-message').innerText = 'Saving User';
       document.getElementById('loader-overlay').style.display = 'flex';
       
-      fetch(SCRIPT_URL, {method:'POST',body:JSON.stringify({action:"saveUser",userData:{name:n,pass:p,role:r,dept:d}})})
+      fetch(SCRIPT_URL, {method:'POST',body:JSON.stringify({action:"saveUser",userData:{name:n,pass:p,role:r,dept:d,roll:o}})})
       .then(r=>r.json()).then(res => {
         document.getElementById('loader-overlay').style.display='none';
         if(res.status==='success') {
           showAlert(res.msg,'success');
           // Refresh local user list
           const idx = masterData.users.findIndex(x => x.name === n);
-          if(idx > -1) masterData.users[idx] = {name:n,pass:p,role:r,dept:d};
-          else masterData.users.push({name:n,pass:p,role:r,dept:d});
+          if(idx > -1) masterData.users[idx] = {name:n,pass:p,role:r,dept:d,roll:o};
+          else masterData.users.push({name:n,pass:p,role:r,dept:d,roll:o});
           renderUserList();
           populateLogin(masterData.users);
         } else showAlert(res.msg,'error');
