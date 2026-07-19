@@ -167,6 +167,56 @@
     tr:hover .sticky-col-qty       { background: #e8eaff; }
     tr.oos-row .sticky-col-oos-first{ opacity: 1; text-decoration: none; }
 
+    /* M.Inventory extra sticky columns */
+    .sticky-col-full {
+      position: sticky;
+      left: 40px;
+      z-index: 30;
+      width: 62px; min-width: 62px; max-width: 62px;
+      background: #e0e7ff;
+      border-right: 1px dashed #6366f1;
+      text-align: center;
+    }
+    .sticky-col-partial {
+      position: sticky;
+      left: 102px;
+      z-index: 29;
+      width: 62px; min-width: 62px; max-width: 62px;
+      background: #fef3c7;
+      border-right: 2px solid #f59e0b;
+      text-align: center;
+    }
+    th.sticky-col-full   { position:sticky; left:40px;  z-index:61; background:#c7d2fe; color:#3730a3; }
+    th.sticky-col-partial{ position:sticky; left:102px; z-index:60; background:#fde68a; color:#92400e; }
+    tr:hover .sticky-col-full    { background: #dde4ff; }
+    tr:hover .sticky-col-partial { background: #fff3c4; }
+    tr.oos-row .sticky-col-full, tr.oos-row .sticky-col-partial { opacity: 0.4; }
+
+    /* Orders specific sticky classes */
+    .sticky-order-qty {
+      position: sticky;
+      left: 0;
+      z-index: 31;
+      width: 60px; min-width: 60px; max-width: 60px;
+      background: #fff8ed;
+      border-right: 1px dashed #f59e0b;
+      text-align: center;
+    }
+    .sticky-order-cons {
+      position: sticky;
+      left: 60px;
+      z-index: 30;
+      width: 45px; min-width: 45px; max-width: 45px;
+      background: #f0f0ff;
+      border-right: 2px solid #c7d2fe;
+      text-align: center;
+    }
+    th.sticky-order-qty { position: sticky; left: 0; z-index: 61; background: #fef3c7; color: #d97706; font-size: 9px; }
+    th.sticky-order-cons { position: sticky; left: 60px; z-index: 60; background: #e0e7ff; color: #4338ca; font-size: 9px; }
+    tr:hover .sticky-order-qty { background: #fff3d9; }
+    tr:hover .sticky-order-cons { background: #e8eaff; }
+    tr.oos-row .sticky-order-qty, tr.oos-row .sticky-order-cons { opacity: 0.45; }
+
     /* OOS Column Styles */
     td.oos-cell { text-align: center; }
     .oos-toggle { width: 18px; height: 18px; cursor: pointer; accent-color: var(--warning); }
@@ -310,8 +360,15 @@
 <body>
 
   <div id="loader-overlay">
-    <div class="spinner"></div>
-    <div id="loader-message">Connecting to server</div>
+    <div style="background:var(--bg-card);padding:45px 30px;border-radius:24px;box-shadow:0 20px 50px rgba(0,0,0,0.08);display:flex;flex-direction:column;align-items:center;border:1px solid var(--border);max-width:340px;width:90%">
+      <img src="https://lh3.googleusercontent.com/d/1gwXYV5GVOzHgkI3QpFY4Up5mavYFBVcl" alt="EZEM Logo" style="width:75px;margin-bottom:25px;border-radius:18px;box-shadow:var(--shadow);animation:pulse 1.8s infinite">
+      <div class="spinner" style="width:36px;height:36px;border-width:2.5px"></div>
+      <div id="loader-message" style="margin-top:20px;font-size:13px;font-weight:700;color:var(--text-muted);text-align:center;letter-spacing:0.5px">Connecting to server</div>
+      <div style="width:100%;height:5px;background:var(--bg-elevated);border-radius:10px;margin-top:20px;overflow:hidden">
+        <div id="loader-progress-bar" style="width:0%;height:100%;background:linear-gradient(90deg,#6366f1,#10b981);transition:width 0.15s ease;border-radius:10px"></div>
+      </div>
+      <div id="loader-percent" style="margin-top:10px;font-size:12px;font-weight:800;color:var(--primary-light)">0%</div>
+    </div>
   </div>
 
   <div class="save-indicator" id="save-indicator">✓ Saved</div>
@@ -559,10 +616,31 @@
 
     // Init
     async function initSystem() {
+      let progress = 0;
+      const progressInterval = setInterval(() => {
+        if (progress < 90) {
+          progress += Math.floor(Math.random() * 10) + 2;
+          if (progress > 90) progress = 90;
+          updateLoaderProgress(progress);
+        }
+      }, 100);
+
+      function updateLoaderProgress(val) {
+        const bar = document.getElementById('loader-progress-bar');
+        const percent = document.getElementById('loader-percent');
+        if (bar) bar.style.width = val + '%';
+        if (percent) percent.textContent = val + '%';
+      }
+
       try {
-        document.getElementById('loader-message').innerText = 'Connecting to server';
+        document.getElementById('loader-message').innerText = 'Downloading database...';
         const res = await fetch(SCRIPT_URL);
         masterData = await res.json();
+        
+        clearInterval(progressInterval);
+        updateLoaderProgress(100);
+        await new Promise(r => setTimeout(r, 250));
+        
         populateLogin(masterData.users);
         
         // masterData.db is now a flat array from DB_Items
@@ -661,14 +739,14 @@
       // If we reach here, we have u (from local or server)
       document.getElementById('err-msg').style.display = 'none';
       currentUser = n;
-      currentDept = document.getElementById('dept-select').value;
+      currentDept = u.dept || document.getElementById('dept-select').value || "";
       localStorage.setItem('ezem_session', JSON.stringify({ user: u, dept: currentDept }));
       applyUserSession(u, currentDept);
     }
 
     function applyUserSession(u, userSelectedDept) {
       currentUser = u.name;
-      currentDept = userSelectedDept;
+      currentDept = u.dept || userSelectedDept || "";
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('display-user').innerText = u.name;
       
@@ -871,11 +949,32 @@
       const isOrders = currentTab === 'Orders';
 
       if(isMaster) {
-        thead.innerHTML = `<tr><th class="sticky-col sticky-col-qty">QTY</th><th style="text-align:left">Item Name</th><th>Refranc</th><th>Code</th><th>WH Unit</th><th>Type</th><th>Cost</th><th class="admin-qty-col">Q1</th><th class="admin-qty-col">Q2</th><th class="admin-qty-col">Q3</th></tr>`;
+        thead.innerHTML = `<tr>
+          <th class="sticky-col-oos-first" style="color:var(--warning);font-size:9px">OOS</th>
+          <th class="sticky-col-full" style="color:#3730a3;font-size:9px">FULL<br><span style="font-size:8px;opacity:.7">مقفول</span></th>
+          <th class="sticky-col-partial" style="color:#92400e;font-size:9px">PARTIAL<br><span style="font-size:8px;opacity:.7">كسر/وزن</span></th>
+          <th style="text-align:left">Item Name</th>
+          <th>Code</th>
+          <th>Refranc</th>
+          <th>WH Unit</th>
+          <th>Type</th>
+          <th>Cost</th>
+          <th style="color:var(--secondary);font-size:9px">TOTAL</th>
+        </tr>`;
       } else if(isOOSTab) {
         thead.innerHTML = `<tr><th>Source</th><th>Refranc</th><th>Code</th><th style="text-align:left">Item Name</th><th>WH Unit</th><th>Type</th><th>Cost</th><th>Remove</th></tr>`;
       } else if(isOrders) {
-        thead.innerHTML = `<tr><th class="sticky-col sticky-col-qty" style="width:60px">Order</th><th class="sticky-col sticky-col-oos" style="width:45px">Cons.</th><th style="text-align:left">Item Name</th><th style="color:var(--primary)">SOH</th><th style="width:80px">Cons.</th><th style="width:80px">Min.</th><th style="color:var(--warning)">Sug.</th><th>Code</th></tr>`;
+        thead.innerHTML = `<tr>
+          <th class="sticky-order-qty" style="color:var(--warning);font-size:9px;width:60px;min-width:60px;max-width:60px;">Order</th>
+          <th class="sticky-order-cons" style="font-size:9px;width:45px;min-width:45px;max-width:45px;">Cons.</th>
+          <th style="text-align:left">Item Name</th>
+          <th style="color:var(--primary)">SOH (الرصيد)</th>
+          <th style="width:85px">Avg Cons.</th>
+          <th style="width:85px">Min SOH</th>
+          <th style="color:var(--warning)">Sug. Order</th>
+          <th>Status</th>
+          <th>Code</th>
+        </tr>`;
       } else {
         thead.innerHTML = `<tr>
           <th class="sticky-col-oos-first oos-col" style="color:var(--warning)">OOS</th>
@@ -919,15 +1018,32 @@
         const cost = parseFloat(item.Cost) || 0;
 
         if(isMaster) {
-          const q1raw = localStorage.getItem(`draft_Master_${item.Code}_q1`);
-          const q2raw = localStorage.getItem(`draft_Master_${item.Code}_q2`);
-          const q3raw = localStorage.getItem(`draft_Master_${item.Code}_q3`);
-          const q1 = q1raw !== null ? q1raw : '';
-          const q2 = q2raw !== null ? q2raw : '';
-          const q3 = q3raw !== null ? q3raw : '';
-          const tot = (parseFloat(q1)||0) + (parseFloat(q2)||0) + (parseFloat(q3)||0);
+          const fullRaw    = localStorage.getItem(`draft_Master_${item.Code}_full`);
+          const partialRaw = localStorage.getItem(`draft_Master_${item.Code}_partial`);
+          const full    = fullRaw    !== null ? fullRaw    : '';
+          const partial = partialRaw !== null ? partialRaw : '';
+          const tot = (parseFloat(full)||0) + (parseFloat(partial)||0);
+          const itemOOS = isOOS('Monthly Inventory', item.Code);
+          if(itemOOS) tr.classList.add('oos-row');
           const safeCode = item.Code.replace(/'/g, "\\'");
-          tr.innerHTML = `<td class="sticky-col sticky-col-qty" style="width:65px"><input readonly class="qty-input total" id="tot_${item.Code}" value="${tot > 0 ? tot : ''}"></td><td style="text-align:left;min-width:150px">${item['Item Name']}</td><td>${item.Refranc||item.ref||'-'}</td><td style="width:90px">${item.Code}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td><td class="admin-qty-col"><input type="number" min="0" class="qty-input mini ${q1 ? 'has-value' : ''}" value="${q1}" oninput="saveM('${safeCode}','q1',this)"></td><td class="admin-qty-col"><input type="number" min="0" class="qty-input mini ${q2 ? 'has-value' : ''}" value="${q2}" oninput="saveM('${safeCode}','q2',this)"></td><td class="admin-qty-col"><input type="number" min="0" class="qty-input mini ${q3 ? 'has-value' : ''}" value="${q3}" oninput="saveM('${safeCode}','q3',this)"></td>`;
+          tr.innerHTML = `
+            <td class="sticky-col-oos-first oos-cell">
+              <input type="checkbox" class="oos-toggle" ${itemOOS ? 'checked' : ''} onchange="toggleOOS('Monthly Inventory','${safeCode}',this.checked)">
+            </td>
+            <td class="sticky-col-full">
+              <input type="number" min="0" class="qty-input ${full ? 'has-value' : ''}" value="${full}" oninput="saveM('${safeCode}','full',this)" ${itemOOS ? 'disabled' : ''} placeholder="0">
+            </td>
+            <td class="sticky-col-partial">
+              <input type="number" min="0" step="0.01" class="qty-input ${partial ? 'has-value' : ''}" style="border-color:rgba(245,158,11,.4);color:#92400e" value="${partial}" oninput="saveM('${safeCode}','partial',this)" ${itemOOS ? 'disabled' : ''} placeholder="0">
+            </td>
+            <td style="text-align:left;min-width:150px">${item['Item Name']}</td>
+            <td style="font-family:monospace;font-size:11px;color:var(--primary-light);font-weight:700">${item.Code}</td>
+            <td>${item.Refranc||item.ref||'-'}</td>
+            <td style="color:var(--text-muted)">${item['WH Unit']||''}</td>
+            <td>${item.Type||''}</td>
+            <td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td>
+            <td><input readonly class="qty-input total" id="tot_${item.Code}" value="${tot > 0 ? tot : ''}" style="min-width:50px"></td>
+          `;
         } else if(isOOSTab) {
           tr.innerHTML = `<td><span style="background:var(--primary);color:white;padding:2px 8px;border-radius:6px;font-size:10px">${item._sourceTab}</span></td><td>${item.Refranc||item.ref||'-'}</td><td style="font-family:monospace;color:var(--primary-light);font-weight:700">${item.Code}</td><td style="text-align:left">${item['Item Name']}</td><td style="color:var(--text-muted)">${item['WH Unit']||''}</td><td>${item.Type||''}</td><td style="color:#f472b6;font-weight:600">${cost > 0 ? cost.toFixed(2) : '-'}</td><td><button onclick="removeOOS('${item._sourceTab}','${item.Code}')" style="background:var(--secondary);color:white;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px"><i class="fas fa-undo"></i></button></td>`;
         } else if(isOrders) {
@@ -945,16 +1061,28 @@
           if (sug < 0) sug = 0;
           
           const adj = localStorage.getItem(`orders_adj_${item.Code}`) || '';
-          if(sug > 0) tr.style.backgroundColor = 'rgba(239, 68, 68, 0.05)';
+          const isLow = minOrdering > 0 && avail < minOrdering;
           
-          tr.innerHTML = `<td class="sticky-col sticky-col-qty"><input type="number" min="0" class="qty-input ${adj?'has-value':''}" value="${adj}" oninput="saveOrderP('${safeCode}','adj',this.value)" placeholder="${sug>0?Math.ceil(sug):''}"></td>
-          <td class="sticky-col sticky-col-oos"><input type="checkbox" ${isCons ? 'checked':''} onchange="saveOrderP('${safeCode}','cons',this.checked)"></td>
-          <td style="text-align:left;min-width:150px;font-weight:${sug>0?'700':'400'};color:${sug>0?'var(--danger)':''}">${item['Item Name']}</td>
-          <td style="color:var(--primary);font-weight:700">${avail}</td>
-          <td><input type="number" min="0" class="qty-input mini" style="width:55px" value="${consumptionRaw !== null && consumptionRaw !== undefined ? consumptionRaw : ''}" oninput="saveOrderP('${safeCode}','consumption',this.value);renderTable()"></td>
-          <td style="font-weight:600;color:var(--text-muted)">${minOrdering > 0 ? minOrdering.toFixed(1) : '-'}</td>
-          <td style="color:var(--warning);font-weight:800;font-size:13px">${sug>0 ? Math.ceil(sug) : '-'}</td>
-          <td style="font-family:monospace;font-size:10px">${item.Code}</td>`;
+          if(isLow) tr.style.backgroundColor = 'rgba(239, 68, 68, 0.03)';
+          
+          const statusBadge = isLow 
+            ? `<span style="background:rgba(239,68,68,0.1);color:var(--danger);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700"><i class="fas fa-exclamation-triangle"></i> Low Stock</span>`
+            : `<span style="background:rgba(16,185,129,0.1);color:var(--secondary);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700"><i class="fas fa-check"></i> Good</span>`;
+
+          tr.innerHTML = `
+            <td class="sticky-order-qty oos-cell">
+              <input type="number" min="0" class="qty-input ${adj?'has-value':''}" value="${adj}" oninput="saveOrderP('${safeCode}','adj',this.value)" placeholder="${sug>0?Math.ceil(sug):''}">
+            </td>
+            <td class="sticky-order-cons">
+              <input type="checkbox" class="oos-toggle" ${isCons ? 'checked':''} onchange="saveOrderP('${safeCode}','cons',this.checked)">
+            </td>
+            <td style="text-align:left;min-width:150px;font-weight:${isLow?'700':'400'}">${item['Item Name']}</td>
+            <td style="color:${isLow?'var(--danger)':'var(--primary)'};font-weight:700">${avail} ${isLow ? '⚠️' : ''}</td>
+            <td><input type="number" min="0" class="qty-input mini" style="width:55px" value="${consumptionRaw !== null && consumptionRaw !== undefined ? consumptionRaw : ''}" oninput="saveOrderP('${safeCode}','consumption',this.value);renderTable()"></td>
+            <td style="font-weight:600;color:var(--text-muted)">${minOrdering > 0 ? minOrdering.toFixed(1) : '-'}</td>
+            <td style="color:var(--warning);font-weight:800;font-size:13px">${sug>0 ? Math.ceil(sug) : '-'}</td>
+            <td>${statusBadge}</td>
+            <td style="font-family:monospace;font-size:10px;color:var(--text-muted)">${item.Code}</td>`;
         } else {
           const val = localStorage.getItem(`draft_${currentTab}_${item.Code}`) || '';
           const itemOOS = isOOS(currentTab, item.Code);
@@ -995,10 +1123,9 @@
         localStorage.setItem(`draft_Master_${code}_${type}`, val);
       }
       el.classList.toggle('has-value', val !== '');
-      const q1 = parseFloat(localStorage.getItem(`draft_Master_${code}_q1`))||0;
-      const q2 = parseFloat(localStorage.getItem(`draft_Master_${code}_q2`))||0;
-      const q3 = parseFloat(localStorage.getItem(`draft_Master_${code}_q3`))||0;
-      const tot = q1+q2+q3;
+      const full    = parseFloat(localStorage.getItem(`draft_Master_${code}_full`))    || 0;
+      const partial = parseFloat(localStorage.getItem(`draft_Master_${code}_partial`)) || 0;
+      const tot = full + partial;
       const totEl = document.getElementById(`tot_${code}`);
       if(totEl) totEl.value = tot > 0 ? tot : '';
       flashSave();
@@ -1035,12 +1162,13 @@
     }
 
     function exportOrdersPDF() {
-      const {jsPDF} = window.jspdf;
-      const doc = new jsPDF('p','mm','a4');
-      const sheetName = "PURCHASE ORDER";
-      let rows = [], totalItems = 0;
+      const resolvedDept = currentDept || (masterData.users.find(u => u.name === currentUser)?.dept) || '';
+      const now = new Date();
+      const timeStr = now.toLocaleString('en-GB', {hour12: false});
+      let rowsHtml = '';
+      let totalItems = 0;
       
-      combinedInventory.forEach(item => {
+      combinedInventory.forEach((item, idx) => {
          let adj = localStorage.getItem(`orders_adj_${item.Code}`);
          if(!adj) {
             const consumption = parseFloat(item.Consumption || localStorage.getItem(`orders_consumption_${item.Code}`)) || 0;
@@ -1052,28 +1180,114 @@
                if(sug > 0) adj = sug.toString();
             }
          }
+         
          if(adj && parseFloat(adj) > 0) {
-            rows.push([item.Code, item['Item Name'], item['WH Unit']||'', parseFloat(adj)]);
+            const bg = idx % 2 === 0 ? '#ffffff' : '#F9F7FB';
+            rowsHtml += `
+              <tr style="background:${bg}">
+                <td>${totalItems + 1}</td>
+                <td>${item.Code}</td>
+                <td style="text-align:left;padding-left:10px">${item['Item Name']}</td>
+                <td>${item['WH Unit']||'Each'}</td>
+                <td style="font-weight:bold;color:#f59e0b;font-size:11px">${parseFloat(adj)}</td>
+                <td>${item.Type || ''}</td>
+              </tr>`;
             totalItems++;
          }
       });
       
-      if(rows.length === 0) return showAlert('No suggested or adjusted items to order. Please input quantities.','warning');
+      if(totalItems === 0) return showAlert('No suggested or adjusted items to order. Please input quantities.','warning');
       
-      addPDFHeader(doc, sheetName);
-      doc.autoTable({
-        startY:33,
-        head:[['Code', 'Item Name', 'Unit', 'Order QTY']],
-        body:rows,
-        theme:'grid',
-        headStyles:{fillColor:[245, 158, 11],textColor:0,halign:'center',fontStyle:'bold'},
-        bodyStyles:{valign:'middle'},
-        didDrawPage: () => { addPDFHeader(doc, sheetName); }
-      });
-      doc.setFontSize(10);
-      doc.text(`Total Ordered Items: ${totalItems}`, 14, doc.lastAutoTable.finalY + 10);
-      doc.save(`EZEM_PO_${new Date().toISOString().split('T')[0]}.pdf`);
-      showAlert('Order PDF exported successfully!','success');
+      const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Purchase Order</title>
+  <style>
+    @page { size: A4 portrait; margin: 40px; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; margin: 0; padding: 0; }
+    
+    .header-container { display: table; width: 100%; border-bottom: 3px solid #f59e0b; padding-bottom: 10px; margin-bottom: 20px; }
+    .header-logo-side { display: table-cell; vertical-align: middle; width: 55px; }
+    .header-title-side { display: table-cell; vertical-align: middle; padding-left: 15px; }
+    .header-info-side { display: table-cell; vertical-align: middle; text-align: right; }
+    .logo-circle { width: 45px; height: 45px; background: linear-gradient(135deg,#f59e0b,#d97706); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; font-weight: 900; }
+    .title { font-size: 22px; font-weight: bold; color: #d97706; margin: 0; }
+    .subtitle { font-size: 11px; color: #888; margin-top: 2px; }
+    .info-text { font-size: 11px; color: #555; margin: 2px 0; }
+    
+    .summary-bar { background: #fef3c7; border-left: 5px solid #f59e0b; padding: 10px 15px; margin-bottom: 15px; font-size: 12px; font-weight: bold; color: #92400e; }
+    
+    table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    th { background: #000000; color: white; padding: 10px 5px; border: 1px solid #333; text-transform: uppercase; font-weight: 900; text-align: center; }
+    td { padding: 8px 5px; border: 1px solid #E5DDF0; text-align: center; }
+    .bold-col { font-weight: 900; font-size: 11px; color: #000; }
+    
+    .final-footer { margin-top: 25px; display: table; width: 100%; }
+    .total-box { display: table-cell; width: 40%; background: linear-gradient(135deg,#f59e0b,#d97706); color: white; padding: 15px 20px; border-radius: 10px; vertical-align: middle; }
+    .total-label { font-size: 11px; opacity: 0.85; margin-bottom: 4px; }
+    .total-amount { font-size: 22px; font-weight: 900; }
+    .system-name { display: table-cell; width: 60%; text-align: right; vertical-align: bottom; font-size: 10px; color: #aaa; padding-left: 20px; }
+    
+    @media print {
+      button { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header-container">
+    <div class="header-logo-side">
+      <div class="logo-circle">PO</div>
+    </div>
+    <div class="header-title-side">
+      <div class="title">PURCHASE ORDER</div>
+      <div class="subtitle">EZEM ERP Purchase Request</div>
+    </div>
+    <div class="header-info-side">
+      <div class="info-text"><b>User:</b> ${currentUser} &nbsp;|&nbsp; <b>Branch:</b> ${resolvedDept || 'All'}</div>
+      <div class="info-text"><b>Date:</b> ${timeStr}</div>
+    </div>
+  </div>
+
+  <div class="summary-bar">
+    📝 ORDER SUMMARY &nbsp;|&nbsp; Total Ordered Items: ${totalItems}
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:40px">No.</th>
+        <th style="width:100px">Code</th>
+        <th>Item Name</th>
+        <th style="width:70px">Unit</th>
+        <th style="width:100px;color:#f59e0b">Order Qty</th>
+        <th style="width:100px">Source Type</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowsHtml}
+    </tbody>
+  </table>
+
+  <div class="final-footer">
+    <div class="total-box">
+      <div class="total-label">TOTAL ITEMS ORDERED</div>
+      <div class="total-amount">${totalItems} Items</div>
+    </div>
+    <div class="system-name">
+      EZEM ERP System &copy; ${now.getFullYear()} &mdash; Professional Inventory Solutions<br>
+      Generated: ${timeStr}
+    </div>
+  </div>
+
+</body>
+</html>`;
+
+      const win = window.open('', '_blank');
+      win.document.write(html);
+      win.document.close();
+      win.onload = () => { win.print(); };
+      showAlert('Order PDF generated successfully!','success');
     }
 
     // Upload
@@ -1086,10 +1300,9 @@
       
       if(isMaster) {
         uploadItems = combinedInventory.map(i => {
-          const q1 = localStorage.getItem('draft_Master_' + i.Code + '_q1');
-          const q2 = localStorage.getItem('draft_Master_' + i.Code + '_q2');
-          const q3 = localStorage.getItem('draft_Master_' + i.Code + '_q3');
-          const total = (parseFloat(q1)||0)+(parseFloat(q2)||0)+(parseFloat(q3)||0);
+          const full = localStorage.getItem('draft_Master_' + i.Code + '_full');
+          const partial = localStorage.getItem('draft_Master_' + i.Code + '_partial');
+          const total = (parseFloat(full)||0)+(parseFloat(partial)||0);
           return {
             Code: i.Code,
             'Item Name': i['Item Name'],
@@ -1151,7 +1364,7 @@
         if(res.status==='success') {
           await showAlert(res.msg,'success');
 
-          if(isMaster) combinedInventory.forEach(item => ['q1','q2','q3'].forEach(s => localStorage.removeItem('draft_Master_' + item.Code + '_' + s)));
+          if(isMaster) combinedInventory.forEach(item => ['full','partial'].forEach(s => localStorage.removeItem('draft_Master_' + item.Code + '_' + s)));
           else combinedInventory.filter(i => (i.Type||'').toString().trim().toLowerCase() === currentTab.toLowerCase()).forEach(item => localStorage.removeItem('draft_' + currentTab + '_' + item.Code));
           
           if(oosItems.length > 0) { oosItems.forEach(i => setOOS(currentTab, i.Code, false)); }
@@ -1165,7 +1378,7 @@
       if(await showConfirm(`Clear ALL inputs for ${currentTab}?`,'Clear All')) {
         const isMaster = currentTab === 'Monthly Inventory';
         const isOrders = currentTab === 'Orders';
-        if(isMaster) combinedInventory.forEach(item => ['q1','q2','q3'].forEach(s => localStorage.removeItem(`draft_Master_${item.Code}_${s}`)));
+        if(isMaster) combinedInventory.forEach(item => ['full','partial'].forEach(s => localStorage.removeItem(`draft_Master_${item.Code}_${s}`)));
         else if(isOrders) combinedInventory.forEach(item => localStorage.removeItem(`orders_adj_${item.Code}`));
         else combinedInventory.filter(i => i.Type === currentTab).forEach(item => localStorage.removeItem(`draft_${currentTab}_${item.Code}`));
         renderTable();
@@ -1285,68 +1498,155 @@
 
     function exportReportToPDF() {
       if(!currentReportData.length) return showAlert('Generate a report first.','warning');
-      const {jsPDF} = window.jspdf;
-      const doc = new jsPDF('l','mm','a4');
+
       const sec = document.getElementById('rpt-section').value;
-      addPDFHeader(doc, sec);
+      const resolvedDept = currentDept || (masterData.users.find(u => u.name === currentUser)?.dept) || '';
+      const now = new Date();
+      const timeStr = now.toLocaleString('en-GB', {hour12: false});
       const sections = ["Daily", "CK", "Weekly", "Monthly", "Monthly Inventory", "Orders", "OOS"];
-      const rows = [];
+
       let grandTotal = 0;
+      let rowsHtml = '';
 
-      sections.forEach(sec => {
-        const secItems = currentReportData.filter(r => r.section === sec);
-        if(secItems.length > 0) {
-          // Section Header row in PDF
-          rows.push([{content: `SECTION: ${sec}`, colSpan: 11, styles: {fillColor: [240, 240, 240], fontStyle: 'bold'}}]);
-          
-          let secTotal = 0;
-          secItems.forEach(r => {
-            const c = parseFloat(r.cost || r.Cost || 0); 
-            const q = parseFloat(r.qty || r.QTY || 0);
-            const rowTotal = c * q;
-            secTotal += rowTotal;
-            grandTotal += rowTotal;
-            rows.push([
-              r.ref || r.Refranc || '-', 
-              r.code || r.Code, 
-              r.name || r['Item Name'], 
-              r.unit || r['WH Unit'] || '', 
-              r.type || r.Type || '', 
-              c.toFixed(2), 
-              q, 
-              rowTotal.toFixed(2),
-              r.user || r.User, 
-              (r.date || r.Date || '').split('T')[0]
-            ]);
-          });
-          // Subtotal row per section with Dark background in PDF
-          rows.push([{content: `Subtotal ${sec} (${secItems.length} Items): EGP ${secTotal.toLocaleString('en',{minimumFractionDigits:2})}`, colSpan: 10, styles: {halign: 'right', fontStyle: 'bold', fillColor: [30, 41, 59], textColor: [255, 255, 255]}}]);
-        }
+      sections.forEach(secName => {
+        const secItems = currentReportData.filter(r => r.section === secName);
+        if(secItems.length === 0) return;
+
+        let secTotal = 0;
+        // Section header row
+        rowsHtml += `<tr><td colspan="10" style="background:#1e293b;color:white;font-weight:900;text-align:left;padding:10px 15px;font-size:11px;letter-spacing:1px;border:none;">📂 SECTION: ${secName} (${secItems.length} Items)</td></tr>`;
+
+        secItems.forEach((r, idx) => {
+          const c = parseFloat(r.cost || r.Cost || 0);
+          const q = parseFloat(r.qty || r.QTY || 0);
+          const rowTotal = c * q;
+          secTotal += rowTotal;
+          grandTotal += rowTotal;
+          const bg = idx % 2 === 0 ? '#ffffff' : '#F9F7FB';
+          rowsHtml += `
+            <tr style="background:${bg}">
+              <td>${r.ref || r.Refranc || '-'}</td>
+              <td>${r.code || r.Code || ''}</td>
+              <td class="left">${r.name || r['Item Name'] || ''}</td>
+              <td>${r.unit || r['WH Unit'] || ''}</td>
+              <td>${r.type || r.Type || ''}</td>
+              <td>${c.toFixed(2)}</td>
+              <td class="bold-col">${q}</td>
+              <td style="font-weight:bold;color:#6B2E8C">${rowTotal.toFixed(2)}</td>
+              <td>${r.user || r.User || ''}</td>
+              <td>${(r.date || r.Date || '').split('T')[0]}</td>
+            </tr>`;
+        });
+
+        // Section subtotal row
+        rowsHtml += `<tr style="background:#1e293b;color:white;">
+          <td colspan="7" style="text-align:right;font-weight:700;padding:8px 12px;border:none;">Subtotal ${secName}:</td>
+          <td colspan="3" style="font-weight:900;color:#a78bfa;padding:8px 12px;border:none;">EGP ${secTotal.toLocaleString('en',{minimumFractionDigits:2})}</td>
+        </tr>`;
       });
 
-      doc.autoTable({
-        startY: 33,
-        head:[['Refranc','Code','Item Name','WH Unit','Type','Cost','QTY','Total Cost','User','Date']],
-        body:rows,
-        foot:[['','','','','','','','GRAND TOTAL:',`EGP ${grandTotal.toLocaleString('en',{minimumFractionDigits:2})}`,'']],
-        theme:'grid',
-        tableWidth:'auto',
-        headStyles:{fillColor:[99,102,241], textColor:255, halign:'center', fontStyle:'bold', fontSize:9},
-        bodyStyles:{fontSize:8, valign:'middle'},
-        footStyles:{fillColor:[30,41,59], textColor:255, fontStyle:'bold', fontSize:9},
-        margin:{top:33, bottom:15},
-        didDrawPage: d => { addPDFHeader(doc, sec); }
-      });
-      addPDFFooter(doc, grandTotal);
-      doc.save(`EZEM_Report_${sec}_${currentUser}_${new Date().toISOString().split('T')[0]}.pdf`);
+      const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>EZEM Report</title>
+  <style>
+    @page { size: A4 landscape; margin: 30px 40px; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; margin: 0; padding: 0; }
+    
+    .header-container { display: table; width: 100%; border-bottom: 3px solid #6B2E8C; padding-bottom: 10px; margin-bottom: 20px; }
+    .header-logo-side { display: table-cell; vertical-align: middle; width: 55px; }
+    .header-title-side { display: table-cell; vertical-align: middle; padding-left: 15px; }
+    .header-info-side { display: table-cell; vertical-align: middle; text-align: right; }
+    .logo-circle { width: 45px; height: 45px; background: linear-gradient(135deg,#6B2E8C,#4338ca); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; font-weight: 900; }
+    .title { font-size: 22px; font-weight: bold; color: #6B2E8C; margin: 0; }
+    .subtitle { font-size: 11px; color: #888; margin-top: 2px; }
+    .info-text { font-size: 11px; color: #555; margin: 2px 0; }
+    
+    .summary-bar { background: #F3EBF7; border-left: 5px solid #6B2E8C; padding: 10px 15px; margin-bottom: 15px; font-size: 12px; font-weight: bold; color: #4B1A7A; }
+    
+    table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
+    th { background: #000000; color: white; padding: 9px 5px; border: 1px solid #333; text-transform: uppercase; font-weight: 900; text-align: center; }
+    td { padding: 7px 5px; border: 1px solid #E5DDF0; text-align: center; }
+    td.left { text-align: left; padding-left: 10px; }
+    .bold-col { font-weight: 900; font-size: 10px; color: #000; }
+    
+    .final-footer { margin-top: 20px; display: table; width: 100%; }
+    .total-box { display: table-cell; width: 38%; background: linear-gradient(135deg,#6B2E8C,#4338ca); color: white; padding: 15px 20px; border-radius: 10px; vertical-align: middle; }
+    .total-label { font-size: 11px; opacity: 0.85; margin-bottom: 4px; }
+    .total-amount { font-size: 22px; font-weight: 900; letter-spacing: 1px; }
+    .system-name { display: table-cell; width: 62%; text-align: right; vertical-align: bottom; font-size: 10px; color: #aaa; padding-left: 20px; }
+    
+    @media print {
+      button { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header-container">
+    <div class="header-logo-side">
+      <div class="logo-circle">E</div>
+    </div>
+    <div class="header-title-side">
+      <div class="title">EZEM EXECUTIVE REPORT</div>
+      <div class="subtitle">Professional Inventory Management System</div>
+    </div>
+    <div class="header-info-side">
+      <div class="info-text"><b>User:</b> ${currentUser} &nbsp;|&nbsp; <b>Branch:</b> ${resolvedDept || 'All'}</div>
+      <div class="info-text"><b>Section:</b> ${sec} &nbsp;|&nbsp; <b>Date:</b> ${timeStr}</div>
+    </div>
+  </div>
+
+  <div class="summary-bar">
+    📊 REPORT SUMMARY &nbsp;|&nbsp; Total Items: ${currentReportData.length} &nbsp;|&nbsp; Grand Total: EGP ${grandTotal.toLocaleString('en',{minimumFractionDigits:2})}
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:40px">Ref</th>
+        <th style="width:75px">Code</th>
+        <th>Item Name</th>
+        <th style="width:55px">Unit</th>
+        <th style="width:60px">Type</th>
+        <th style="width:65px">Cost</th>
+        <th style="width:45px">QTY</th>
+        <th style="width:80px">Total Cost</th>
+        <th style="width:80px">User</th>
+        <th style="width:80px">Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowsHtml}
+    </tbody>
+  </table>
+
+  <div class="final-footer">
+    <div class="total-box">
+      <div class="total-label">GRAND TOTAL VALUE</div>
+      <div class="total-amount">EGP ${grandTotal.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+    </div>
+    <div class="system-name">
+      EZEM ERP System &copy; ${now.getFullYear()} &mdash; Professional Inventory Solutions<br>
+      Generated: ${timeStr}
+    </div>
+  </div>
+
+</body>
+</html>`;
+
+      const win = window.open('', '_blank');
+      win.document.write(html);
+      win.document.close();
+      win.onload = () => { win.print(); };
     }
 
     function sendReportToTelegram() {
       if(!currentReportData.length) return showAlert('Generate a report first.','warning');
       
       // Default values from code.gs
-      const defaultToken = "8630064385:AAEOIyHLx5oHfJS9Gv0z4KanTLQZ61GTtEQ";
-      const defaultChatId = "839787526";
+      const defaultToken = "8951534694:AAFyazYfpFp5JtcMTHD-rnfqlABaPuBUy_s";
+      const defaultChatId = "-1004378624008";
       
       // Use saved settings or defaults
       let botToken = localStorage.getItem('tg_bot_token') || defaultToken;
@@ -1401,12 +1701,13 @@
       } else if(isMaster) {
         items = combinedInventory;
         items.forEach(i => {
-          const q1=localStorage.getItem(`draft_Master_${i.Code}_q1`), q2=localStorage.getItem(`draft_Master_${i.Code}_q2`), q3=localStorage.getItem(`draft_Master_${i.Code}_q3`);
-          const tot=(parseFloat(q1)||0)+(parseFloat(q2)||0)+(parseFloat(q3)||0);
-          const c=parseFloat(i.Cost)||0; 
+          const full = localStorage.getItem(`draft_Master_${i.Code}_full`);
+          const partial = localStorage.getItem(`draft_Master_${i.Code}_partial`);
+          const tot = (parseFloat(full)||0)+(parseFloat(partial)||0);
+          const c = parseFloat(i.Cost)||0; 
           if(tot>0) {
             totalCost += (c * tot);
-            rows.push([i.Refranc||i.ref||'-',i.Code,i['Item Name'],i['WH Unit']||'',i.Type||'',c.toFixed(2),q1||'-',q2||'-',q3||'-',tot]);
+            rows.push([i.Refranc||i.ref||'-',i.Code,i['Item Name'],i['WH Unit']||'',i.Type||'',c.toFixed(2),full||'-',partial||'-',tot]);
           }
         });
       } else {
@@ -1428,7 +1729,7 @@
 
       let head;
       if(isMaster) {
-        head = [['Refranc','Code','Item Name','WH Unit','Type','Cost','Q1','Q2','Q3','Total QTY']];
+        head = [['Refranc','Code','Item Name','WH Unit','Type','Cost','Full','Partial','Total QTY']];
       } else if(isOOSTab) {
         head = [['Refranc','Code','Item Name','WH Unit','Type','Cost','QTY']];
       } else {
@@ -1472,8 +1773,8 @@
       const savedChatId = localStorage.getItem('tg_chat_id');
       
       // Default values from code.gs
-      const defaultToken = "8630064385:AAEOIyHLx5oHfJS9Gv0z4KanTLQZ61GTtEQ";
-      const defaultChatId = "839787526";
+      const defaultToken = "8951534694:AAFyazYfpFp5JtcMTHD-rnfqlABaPuBUy_s";
+      const defaultChatId = "-1004378624008";
       
       document.getElementById('tg-token').value = savedToken || defaultToken;
       document.getElementById('tg-chat-id').value = savedChatId || defaultChatId;
@@ -1555,8 +1856,8 @@
     function sendOOSAutoReport(oosItems, tabName) {
       if(!oosItems || oosItems.length === 0) return;
       
-      const defaultToken = "8630064385:AAEOIyHLx5oHfJS9Gv0z4KanTLQZ61GTtEQ";
-      const defaultChatId = "839787526";
+      const defaultToken = "8951534694:AAFyazYfpFp5JtcMTHD-rnfqlABaPuBUy_s";
+      const defaultChatId = "-1004378624008";
 
       // Match OOS sheet columns: Ref, Code, Item Name, Arabic, Unit, Weight, Type, Cost, Status, Date, User
       const itemsForServer = oosItems.map(i => ({
